@@ -16,7 +16,7 @@ Analyze financial and market data to extract insights using SQL, Python, and Pow
 - `powerbi/`: dashboards and visualizations
 
 ## Key Insights
-- (Add insights as you build)
+- (I will add insights as I build)
 
 ## Status
 🚧 Actively building
