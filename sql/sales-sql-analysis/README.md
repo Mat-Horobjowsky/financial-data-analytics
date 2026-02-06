@@ -1,137 +1,85 @@
-📊 Sales Performance & Customer Analysis (SQL)
-Overview
+# Sales SQL Analysis
 
-This project analyzes retail sales data using PostgreSQL to answer common business questions around sales performance, customer behavior, and product profitability.
+This project demonstrates **SQL-based data modeling and analysis** using a realistic sales dataset.  
+The goal is to showcase practical SQL skills, including schema design, relational thinking, and analytical querying to answer business-focused questions.
 
-The dataset comes from a Superstore-style retail dataset and was intentionally normalized into multiple tables to reflect how real-world analytical databases are structured.
+---
 
-The goal of this project is to demonstrate:
+## 📌 Project Overview
 
-SQL querying skills
+In this project, an analysis-ready sales dataset is loaded into a relational database and analyzed using SQL.
 
-data modeling and normalization
+The work focuses on:
+- Designing a normalized database schema
+- Writing clean, readable SQL queries
+- Translating business questions into analytical insights
 
-handling messy real-world data
+This project reflects real-world scenarios where analysts work with structured data provided by upstream systems.
 
-analytical thinking, not just syntax
+---
 
-Dataset
+## 🗂️ Dataset Description
 
-The original dataset was provided as a single flat CSV file (superstore_raw) containing order, customer, and product information.
+The dataset represents historical sales transactions and includes information such as:
+- Orders and order dates
+- Products and product categories
+- Customers
+- Sales revenue, costs, and profit
 
-Key characteristics:
+The data is assumed to be **pre-cleaned** and suitable for direct database ingestion.
 
-anonymized customer data (no customer names)
+---
 
-mixed data types (dates stored as text)
+## 🏗️ Database Schema
 
-business-oriented fields such as sales, profit, and discounts
+The database is structured using a relational model with fact and dimension tables.
 
-Data Modeling & Normalization
+### Key tables include:
+- **customers** – customer identifiers and attributes  
+- **products** – product details and categories  
+- **orders** – order-level transaction data  
+- **sales** – fact table containing revenue, cost, and profit metrics  
 
-Instead of querying the raw flat table directly, the data was split into three relational tables:
+Primary and foreign keys are used to enforce relationships and ensure data integrity.
 
-Tables Created
+📄 See `schema.sql` for full table definitions.
 
-customers – customer-level attributes
+---
 
-products – product-level attributes
+## 🧪 SQL Files
 
-orders – transactional sales data
+| File | Description |
+|-----|-------------|
+| `schema.sql` | Creates database tables and relationships |
+| `inserts.sql` | Inserts data into tables |
+| `analysis.sql` | Contains analytical SQL queries |
 
-This design:
+---
 
-reduces redundancy
+## 📊 Analysis & Business Questions
 
-improves query clarity
+The SQL queries explore questions such as:
+- What are the overall revenue and profit trends?
+- Which products and categories perform best?
+- Who are the top customers by revenue?
+- How does performance vary across time periods?
 
-enables realistic JOIN-based analysis
+The focus is on writing **clear, maintainable SQL** rather than overly complex queries.
 
-Schema Design
+---
 
-Primary keys were defined for each dimension table
+## 🧠 Skills Demonstrated
 
-Foreign keys were added to the orders table to enforce data integrity
+- SQL querying and joins
+- Aggregations and filtering
+- Relational schema design
+- Business-oriented data analysis
+- Query organization and documentation
 
-Dates were converted from text to proper DATE types
+---
 
-This mirrors how data is structured in real analytics and BI environments.
+## 🚀 Purpose
 
-ETL Process (Extract, Transform, Load)
-1. Raw Data Import
+This project is part of a broader **data analytics portfolio**, intended to demonstrate readiness for entry-level data analyst and analytics-focused roles.
 
-The CSV file was first imported into PostgreSQL as a staging table:
-
-superstore_raw
-
-This table preserves the original column names and data types from the source file.
-
-2. Data Transformation
-
-During insertion into the final tables:
-
-Columns with spaces and capitalization were mapped to clean snake_case names
-
-Text-based date fields were converted using TO_DATE()
-
-Numeric fields were cast to appropriate numeric types
-
-Duplicate dimension records were removed using SELECT DISTINCT
-
-3. Data Loading
-
-Data was inserted in the following order to respect foreign key constraints:
-
-customers
-
-products
-
-orders
-
-This ensures referential integrity across tables.
-
-Example Business Questions Answered
-
-Some of the questions explored in this project include:
-
-What is total revenue and profit by month?
-
-Which product categories generate the most revenue?
-
-Which regions are the most profitable?
-
-Who are the highest-value customers?
-
-How does discounting impact profitability?
-
-(Queries can be found in the /sql folder.)
-
-Tools Used
-
-PostgreSQL – database engine
-
-DBeaver – SQL client
-
-SQL – data modeling and analysis
-
-GitHub – version control and project documentation
-
-Key Takeaways
-
-Real-world datasets are rarely clean and require preprocessing
-
-Proper schema design improves both performance and readability
-
-SQL is not just about querying, but about structuring data for analysis
-
-Next Steps
-
-Planned enhancements for this project include:
-
-advanced SQL queries using window functions
-
-customer lifetime value analysis
-
-year-over-year sales comparisons
-
-integration with Power BI for visualization
+---
