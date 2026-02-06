@@ -1,6 +1,52 @@
-# Excel temp files
+# =========================
+# Excel temporary files
+# =========================
 
+~$*.xlsx
+~$*.xls
+*.xlk
 
-# OS files
+# =========================
+# Backup / autosave files
+# =========================
+
+*.bak
+*.tmp
+*.temp
+*.autosave
+
+# =========================
+# OS-generated files
+# =========================
+
 .DS_Store
 Thumbs.db
+desktop.ini
+
+# =========================
+# Logs
+# =========================
+
+*.log
+
+# =========================
+# Python / notebooks (if used later)
+# =========================
+
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# =========================
+# Environment / editor files
+# =========================
+
+.vscode/
+.idea/
+
+# =========================
+# Large raw exports (optional)
+# Uncomment if needed
+# =========================
+# data/raw/*.csv
+# data/raw/*.xlsx
