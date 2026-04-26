@@ -17,6 +17,9 @@ intake run data/messy_report.xlsx --profile --validate
 Outputs a cleaned CSV (or Parquet), a validation result (PASS / WARN / FAIL), a profiling summary, and a self-contained HTML report — no configuration required to get started.
 
 ---
+## Example Run
+
+![Terminal Run](assets/terminal_run.png)
 
 ## Key Features
 
@@ -37,6 +40,9 @@ Outputs a cleaned CSV (or Parquet), a validation result (PASS / WARN / FAIL), a 
 - **Config-driven** — Override thresholds, required columns, column rename rules, and output format via YAML
 
 ---
+## HTML Quality Report
+
+![HTML Report](assets/html_report.png)
 
 ## Architecture
 
