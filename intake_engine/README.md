@@ -1,6 +1,6 @@
 # intake_engine
 
-A production-grade CLI tool for ingesting messy CSV and XLSX files and converting them into clean, analytics-ready datasets.
+A production-mided CLI tool for ingesting messy CSV and XLSX files and converting them into clean, analytics-ready datasets.
 
 Handles delimiter detection, header normalization, numeric and date cleaning, data validation, profiling, HTML reporting, and optional DuckDB export — all from a single command.
 
@@ -164,8 +164,8 @@ Analytics and consulting work routinely starts with ingesting data from multiple
 ## Install
 
 ```bash
-git clone https://github.com/your-username/intake_engine.git
-cd intake_engine
+git clone https://github.com/Mat-Horobjowsky/financial-data-analytics.git
+cd financial-data-analytics/intake_engine
 python -m venv .venv
 source .venv/bin/activate    # Windows: .venv\Scripts\activate
 pip install -e .
