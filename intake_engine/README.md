@@ -1,6 +1,6 @@
 # intake_engine
 
-A production-mided CLI tool for ingesting messy CSV and XLSX files and converting them into clean, analytics-ready datasets.
+A modular CLI tool for ingesting messy CSV and XLSX files and converting them into clean, analytics-ready datasets.
 
 Handles delimiter detection, header normalization, numeric and date cleaning, data validation, profiling, HTML reporting, and optional DuckDB export — all from a single command.
 
