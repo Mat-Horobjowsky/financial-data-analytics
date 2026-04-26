@@ -11,7 +11,7 @@ Handles delimiter detection, header normalization, numeric and date cleaning, da
 Real-world data arrives inconsistent: mixed date formats, currency symbols in numeric columns, inconsistent headers, duplicates, and files with no schema enforcement. `intake_engine` solves this at the ingestion layer so downstream analytics can trust the data.
 
 ```bash
-intake run data/messy_report.xlsx --profile --report
+intake run data/messy_report.xlsx --profile --validate
 ```
 
 Outputs a cleaned CSV (or Parquet), a validation result (PASS / WARN / FAIL), a profiling summary, and a self-contained HTML report — no configuration required to get started.
@@ -65,9 +65,9 @@ Each module is a focused, independently testable unit. The CLI orchestrates them
 intake run data/sales.csv
 ```
 
-**Run with profiling and HTML report:**
+**Run with profiling and validation (also generates HTML report):**
 ```bash
-intake run data/sales.xlsx --profile --report
+intake run data/sales.xlsx --profile --validate
 ```
 
 **Export to Parquet:**
@@ -87,7 +87,7 @@ intake profile data/sales.csv
 
 **Process all sheets in an Excel workbook:**
 ```bash
-intake run data/workbook.xlsx --all-sheets
+intake run data/workbook.xlsx --sheet all
 ```
 
 **Batch process a folder:**
@@ -129,12 +129,14 @@ column_rules:
 
 **Default outputs:**
 ```
-outputs/{filename}_clean.csv        # Cleaned data
-outputs/{filename}_profile.json     # Profiling report
-outputs/{filename}_validation.json  # Validation report
-outputs/{filename}_report.html      # HTML quality report
-logs/run.log                        # Full execution log
+outputs/{filename}_clean.csv        # Cleaned data (always)
+outputs/{filename}_profile.json     # Profiling report (with --profile)
+outputs/{filename}_validation.json  # Validation report (with --validate)
+outputs/{filename}_report.html      # HTML quality report (with --profile or --validate)
+logs/run.log                        # Full execution log (always)
 ```
+
+HTML reports are generated automatically whenever `--profile` or `--validate` is passed to `intake run`, and always by the `intake validate` and `intake profile` subcommands.
 
 ---
 
