@@ -1,0 +1,4 @@
+Site,Capacity,Peak Load,Notes
+Site A,1,500 kW,2,000 MW,primary
+Site B,12,500,750 kW,secondary
+Site C,6MW,6,000 kW,tertiary

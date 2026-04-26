@@ -1,0 +1,12 @@
+outputs/*
+!outputs/.gitkeep
+logs/*
+!logs/.gitkeep
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+dist/
+.pytest_cache/
+*.duckdb
+.claude/

@@ -1,0 +1,6 @@
+Customer,Invoice Date,Revenue
+Alpha,2024-03-05,$1200
+Beta,03/05/2024,$950
+Gamma,5-Mar-24,$1400
+Delta,"March 5, 2024",$775
+Epsilon,bad date,$600

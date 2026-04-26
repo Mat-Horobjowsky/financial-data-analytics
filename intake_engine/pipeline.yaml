@@ -1,0 +1,13 @@
+output_format: parquet
+output_dir: C:\Users\Mat Horobjowsky\financial_data_analytics\intake_engine\outputs
+run_validate: true
+run_profile: true
+
+required_columns:
+
+- provider_name
+- site_name
+- available_mw
+
+null_threshold: 0.20
+duplicate_threshold: 0.10
