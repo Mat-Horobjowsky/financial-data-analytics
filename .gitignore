@@ -29,3 +29,8 @@ data/raw/
 # -------------------------
 *.pbix~
 *.pbit~
+
+# Large/local project files not intended for this repo commit
+data_center_agent/
+excel/Electricity_Model.xlsx
+sql/coffee-king-project/
