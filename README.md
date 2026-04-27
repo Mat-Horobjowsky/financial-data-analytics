@@ -2,64 +2,102 @@
 
 A growing portfolio of analytics systems, projects, and tools focused on turning raw data into decision-ready intelligence.
 
-This repository includes practical work across data ingestion, SQL analytics, BI dashboards, and reusable metrics systems.
+This repository documents my progression from analyst workflows to reusable analytics systems — combining data ingestion, metric governance, BI reporting, and AI-ready data foundations.
 
 ## 📂 Repository Structure
 
 ```text
 financial-data-analytics/
-├── intake_engine/
-├── metrics_engine/      (in progress)
-├── sql/
-├── powerbi/
-├── excel/
+├── intake_engine/       # Raw/messy data → clean analytics-ready data
+├── metrics_engine/      # Clean data → trusted reusable KPI outputs
+├── sql/                 # SQL analytics and modeling projects
+├── powerbi/             # Power BI dashboards and report assets
+├── excel/               # Excel-based models and analysis
 └── README.md
-```
 
-## 🚀 Featured Project: Intake Engine v1.0
+🚀 Featured Projects
+Intake Engine v1.0 ✅
 
 A modular Python CLI ingestion tool that converts messy CSV / TSV / Excel files into trusted analytics-ready outputs.
 
-### Key Features
+Key Features
+CSV / TSV / Excel ingestion
+Delimiter auto-detection
+Multi-sheet Excel support
+Data cleaning and normalization
+Validation and profiling
+HTML quality reports
+DuckDB loading and append mode
+YAML configs
+Batch processing
+Metrics Engine v1.0 ✅
 
-* CSV / TSV / Excel ingestion
-* Delimiter auto-detection
-* Multi-sheet Excel support
-* Data cleaning & normalization
-* Validation + profiling
-* HTML quality reports
-* DuckDB loading + append mode
-* YAML configs
-* Batch processing
+A config-driven KPI calculation engine that turns cleaned data into validated, reusable metric outputs for Power BI, Excel, and future AI analytics workflows.
 
-## 🧠 Current Roadmap
+Key Features
+CSV / Excel input
+Schema-driven column normalization
+YAML-based metric definitions
+Validation before calculation
+Configurable segment rollups
+Sum-before-divide KPI logic
+Long and wide metric outputs
+Metric dictionary generation
+Validation report export
+CLI workflow with tests
+Example Workflow
+Cleaned Intake Engine output
+        ↓
+Metrics Engine validation
+        ↓
+Trusted KPI calculation
+        ↓
+Power BI / Excel-ready outputs
 
-### Intake Engine ✅
+Generated outputs:
 
-Clean data
+long_metrics.csv
+wide_metrics.csv
+metric_dictionary.csv
+validation_report.json
+🧠 Roadmap
+Intake Engine ✅
 
-### Metrics Engine (Next)
+Clean data.
 
-Trusted KPI logic, reusable business metrics, semantic layers
+Metrics Engine ✅
 
-### Visual Layer (Future)
+Trusted KPI logic and reusable business metrics.
 
-Dashboards + natural-language analytics
+Visual Layer 🔜
 
-## 🧰 Skills Demonstrated
+Power BI dashboards, reusable report templates, and eventually natural-language analytics interfaces.
 
-* Python analytics engineering
-* SQL data modeling
-* Power BI reporting
-* DuckDB workflows
-* Data quality automation
-* Modular system design
-* Git / GitHub workflow
+AI-Ready Analytics Layer 🔜
 
-## 🎯 Purpose
+Future work focused on connecting clean data and trusted metrics to agentic workflows, semantic layers, and natural-language analysis.
 
-This repo documents my progression from analyst tools to analytics systems — combining BI, engineering, and AI workflows.
+🧰 Skills Demonstrated
+Python analytics engineering
+Data ingestion and cleaning automation
+Schema normalization
+KPI / metric layer design
+SQL data modeling
+Power BI reporting
+DuckDB workflows
+YAML-driven configuration
+Data quality validation
+Modular system architecture
+Test-driven development
+Git / GitHub workflow
+🎯 Purpose
 
-## 📫 Connect
+The goal of this repo is to build a practical analytics product stack around a simple principle:
 
-LinkedIn: [www.linkedin.com/in/mat-horobjowsky](http://www.linkedin.com/in/mat-horobjowsky)
+Clean data → Trusted metrics → Visuals anywhere
+
+This work reflects my transition from dashboard-building toward AI-enabled analytics systems: reusable tools that clean data, standardize metric logic, and make reporting more trustworthy and scalable.
+
+📫 Connect
+
+LinkedIn: www.linkedin.com/in/mat-horobjowsky
