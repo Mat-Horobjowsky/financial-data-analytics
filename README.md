@@ -30,6 +30,8 @@ HTML quality reports
 DuckDB loading and append mode
 YAML configs
 Batch processing
+
+
 Metrics Engine v1.0 ✅
 
 A config-driven KPI calculation engine that turns cleaned data into validated, reusable metric outputs for Power BI, Excel, and future AI analytics workflows.
@@ -45,7 +47,10 @@ Long and wide metric outputs
 Metric dictionary generation
 Validation report export
 CLI workflow with tests
+
+
 Example Workflow
+
 Cleaned Intake Engine output
         ↓
 Metrics Engine validation
@@ -60,7 +65,10 @@ long_metrics.csv
 wide_metrics.csv
 metric_dictionary.csv
 validation_report.json
+
+
 🧠 Roadmap
+
 Intake Engine ✅
 
 Clean data.
@@ -77,7 +85,9 @@ AI-Ready Analytics Layer 🔜
 
 Future work focused on connecting clean data and trusted metrics to agentic workflows, semantic layers, and natural-language analysis.
 
+
 🧰 Skills Demonstrated
+
 Python analytics engineering
 Data ingestion and cleaning automation
 Schema normalization
@@ -90,6 +100,8 @@ Data quality validation
 Modular system architecture
 Test-driven development
 Git / GitHub workflow
+
+
 🎯 Purpose
 
 The goal of this repo is to build a practical analytics product stack around a simple principle:
