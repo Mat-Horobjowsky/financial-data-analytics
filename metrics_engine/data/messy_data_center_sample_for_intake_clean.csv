@@ -1,0 +1,13 @@
+report_date,geo,vendor,total_revenue,capacity_mw,leased_mw,contracted_kw,facility_id,market_tier,notes,unused_export_field
+2024-01-01,EMEA,Equinix,1200000,50.0,38.5,38500,LDN-01,Tier 1,Monthly export row,A
+2024-01-01,EMEA,CyrusOne,850000,30.0,22.0,22000,FRA-02,Tier 2,Monthly export row,B
+2024-01-01,NAM,Equinix,2100000,80.0,67.2,67200,ASH-01,Tier 1,Monthly export row,C
+2024-01-01,NAM,CyrusOne,1750000,60.0,51.0,51000,PHX-02,Tier 2,Monthly export row,D
+2024-02-01,EMEA,Equinix,1250000,50.0,40.0,40000,LDN-01,Tier 1,Monthly export row,E
+2024-02-01,EMEA,CyrusOne,900000,30.0,24.5,24500,FRA-02,Tier 2,Monthly export row,F
+2024-02-01,NAM,Equinix,2200000,80.0,69.0,69000,ASH-01,Tier 1,Monthly export row,G
+2024-02-01,NAM,CyrusOne,1800000,60.0,53.0,53000,PHX-02,Tier 2,Monthly export row,H
+2024-03-01,EMEA,Equinix,1300000,50.0,41.0,41000,LDN-01,Tier 1,Monthly export row,I
+2024-03-01,EMEA,CyrusOne,950000,30.0,25.5,25500,FRA-02,Tier 2,Monthly export row,J
+2024-03-01,NAM,Equinix,2300000,80.0,71.0,71000,ASH-01,Tier 1,Monthly export row,K
+2024-03-01,NAM,CyrusOne,1850000,60.0,54.5,54500,PHX-02,Tier 2,Monthly export row,L

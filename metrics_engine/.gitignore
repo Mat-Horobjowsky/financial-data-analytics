@@ -1,0 +1,62 @@
+# Python cache / bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Test / coverage artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+.cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# Build / packaging artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Jupyter / notebooks
+.ipynb_checkpoints/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE/editor files
+.vscode/
+.idea/
+
+# Metrics Engine generated outputs
+outputs/
+*.log
+
+# Optional local scratch/data exports
+data/tmp/
+data/temp/
+data/*.xlsx
+data/*.xls
+
+# Keep sample CSVs tracked
+!data/sample_data_centers.csv
+!data/messy_data_center_sample_for_intake_clean.csv
+
+# Power BI local files
+*.pbix
+*.pbit
+
+# Claude / local agent scratch files
+.claude/
+docs/superpowers/plans/

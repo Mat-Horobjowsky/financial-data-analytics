@@ -1,0 +1,29 @@
+base_columns:
+  - name: date
+    type: date
+    aliases: [Date, report_date, Period]
+
+  - name: revenue
+    type: float
+    aliases: [Revenue, total_revenue, rev]
+
+  - name: capacity_mw
+    type: float
+    aliases: [Capacity_MW, cap_mw, Capacity]
+
+  - name: leased_mw
+    type: float
+    aliases: [Leased_MW, leasedmw]
+
+  - name: contracted_kw
+    type: float
+    aliases: [Contracted_KW, kw_contracted]
+
+segment_columns:
+  - name: region
+    required: false
+    aliases: [Region, geo]
+
+  - name: provider
+    required: false
+    aliases: [Provider, vendor]
