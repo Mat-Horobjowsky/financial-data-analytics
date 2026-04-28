@@ -94,6 +94,7 @@ Running Metrics Engine on cleaned Intake Engine output produces a validation sum
 ```
 py -m metrics_engine.cli run --input data/messy_data_center_sample_for_intake_clean.csv --output outputs/intake_test/ --with-time
 
+```
 ![Metrics Engine CLI output](docs/images/metrics_terminal.png)
 
 The generated `wide_metrics.csv` can be loaded directly into Power BI for KPI validation and quick dashboarding:
