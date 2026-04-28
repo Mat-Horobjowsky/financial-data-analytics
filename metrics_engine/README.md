@@ -89,7 +89,10 @@ py -m metrics_engine.cli run --input data/messy_data_center_sample_for_intake_cl
 
 ## Example Run
 
-Running Metrics Engine on cleaned Intake Engine output produces a validation summary and four output files:
+Running Metrics Engine on cleaned Intake Engine output produces a validation summary and five output files:
+
+```
+py -m metrics_engine.cli run --input data/messy_data_center_sample_for_intake_clean.csv --output outputs/intake_test/ --with-time
 
 ![Metrics Engine CLI output](docs/images/metrics_terminal.png)
 
@@ -99,9 +102,32 @@ The generated `wide_metrics.csv` can be loaded directly into Power BI for KPI va
 
 ---
 
+## Metrics Engine CLI output
+
+The generated outputs can be loaded directly into Power BI for KPI validation, executive reporting, and prior-period analysis.
+
+Executive Summary
+
+wide_metrics.csv powers executive-level KPI cards, monthly summaries, and trend visuals.
+
+![Executive Summary](docs/images/metrics_powerbi_executive.png)
+
+Prior-Period Time Analysis
+
+When run with --with-time, long_metrics.csv includes prior-period comparison fields for time-series analysis.
+
+![Prior_Period Time Analysis](docs/images/metrics_powerbi_time_analysis.png)
+
+Metric Dictionary & Validation
+
+Metrics Engine also exports a metric dictionary and validation report so outputs are auditable and easier to trust.
+
+![Metric Dictionary & Validation](docs/images/metrics_powerbi_qa.png)
+
+
 ## Output Files
 
-All four files are written to the output directory on a successful run.
+All five files are written to the output directory on a successful run.
 
 | File | Description |
 |---|---|
@@ -170,7 +196,7 @@ Time analysis is applied within each comparable group: rollup_level + segment co
 
 The following are **out of scope for v1** and deferred to future versions:
 
-- Time intelligence (period-over-period, rolling averages, YTD)
+- Time intelligence (Advanced time intelligence such as rolling averages and YTD)
 - SQL export
 - Power BI API push
 - GUI or web interface
