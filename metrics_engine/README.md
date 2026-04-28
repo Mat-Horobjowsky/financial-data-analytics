@@ -142,6 +142,20 @@ Example:
 ```
 2 additional row(s) share the same date for rollup date_only; values will be aggregated.
 ```
+## v1.1 Time Analysis
+
+Metrics Engine can optionally enrich `long_metrics.csv` with prior-period comparison fields:
+
+```
+py -m metrics_engine.cli run --input data/sample_data_centers.csv --output outputs/time_test/ --with-time
+
+Adds:
+
+prior_period_value
+period_change
+period_change_pct
+
+Time analysis is applied within each comparable group: rollup_level + segment columns + metric_id, so regions, providers, rollup levels, and metrics are not compared against each other.
 
 ---
 

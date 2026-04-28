@@ -8,6 +8,7 @@ from metrics_engine import loader
 from metrics_engine import metric_registry as registry_mod
 from metrics_engine import output_builder
 from metrics_engine import schema as schema_mod
+from metrics_engine import time_engine
 from metrics_engine import validator as validator_mod
 from metrics_engine.exporter import export
 from metrics_engine.validator import ValidationReport
@@ -67,11 +68,16 @@ def cmd_run(args) -> None:
 
     result_df = calc_mod.calculate(norm_result.df, registry)
     long_metrics = output_builder.build_long_metrics(result_df, registry)
+    export_long = (
+        time_engine.add_prior_period_metrics(long_metrics)
+        if getattr(args, "with_time", False)
+        else long_metrics
+    )
     wide_metrics = output_builder.build_wide_metrics(long_metrics)
     metric_dict = output_builder.build_metric_dictionary(registry)
 
     out_dir = Path(args.output)
-    export(long_metrics, wide_metrics, metric_dict, report, out_dir)
+    export(export_long, wide_metrics, metric_dict, report, out_dir)
 
     print(f"\nOutput written to: {out_dir.resolve()}")
     for fname in ["long_metrics.csv", "wide_metrics.csv", "metric_dictionary.csv", "validation_report.json"]:
@@ -106,6 +112,8 @@ def main() -> None:
     run_p.add_argument("--schema", default="config/schema.yaml", help="Schema config (default: config/schema.yaml)")
     run_p.add_argument("--dry-run", dest="dry_run", action="store_true",
                        help="Validate only; do not write output files")
+    run_p.add_argument("--with-time", dest="with_time", action="store_true",
+                       help="Enrich long_metrics output with prior-period comparison columns")
 
     val_p = subparsers.add_parser("validate", help="Validate input data without writing output")
     val_p.add_argument("--input", required=True, help="Input data file (CSV or Excel)")
