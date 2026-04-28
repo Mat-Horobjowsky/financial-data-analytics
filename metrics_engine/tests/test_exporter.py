@@ -4,7 +4,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from metrics_engine.exporter import export
+from metrics_engine.exporter import export, export_excel
 from metrics_engine.validator import ValidationReport
 
 
@@ -225,3 +225,69 @@ def test_validation_report_empty_errors_and_warnings(
     data = json.loads((tmp_path / "validation_report.json").read_text())
     assert data["errors"] == []
     assert data["warnings"] == []
+
+
+# ── export_excel ──────────────────────────────────────────────────────────────
+
+def test_export_excel_writes_xlsx_file(
+    tmp_path, long_metrics, wide_metrics, metric_dictionary, report_passed
+):
+    export_excel(long_metrics, wide_metrics, metric_dictionary, report_passed, tmp_path)
+    assert (tmp_path / "metrics_output.xlsx").exists()
+
+
+def test_excel_has_long_metrics_sheet(
+    tmp_path, long_metrics, wide_metrics, metric_dictionary, report_passed
+):
+    export_excel(long_metrics, wide_metrics, metric_dictionary, report_passed, tmp_path)
+    xl = pd.ExcelFile(tmp_path / "metrics_output.xlsx")
+    assert "long_metrics" in xl.sheet_names
+
+
+def test_excel_has_wide_metrics_sheet(
+    tmp_path, long_metrics, wide_metrics, metric_dictionary, report_passed
+):
+    export_excel(long_metrics, wide_metrics, metric_dictionary, report_passed, tmp_path)
+    xl = pd.ExcelFile(tmp_path / "metrics_output.xlsx")
+    assert "wide_metrics" in xl.sheet_names
+
+
+def test_excel_has_metric_dictionary_sheet(
+    tmp_path, long_metrics, wide_metrics, metric_dictionary, report_passed
+):
+    export_excel(long_metrics, wide_metrics, metric_dictionary, report_passed, tmp_path)
+    xl = pd.ExcelFile(tmp_path / "metrics_output.xlsx")
+    assert "metric_dictionary" in xl.sheet_names
+
+
+def test_excel_has_validation_report_sheet(
+    tmp_path, long_metrics, wide_metrics, metric_dictionary, report_passed
+):
+    export_excel(long_metrics, wide_metrics, metric_dictionary, report_passed, tmp_path)
+    xl = pd.ExcelFile(tmp_path / "metrics_output.xlsx")
+    assert "validation_report" in xl.sheet_names
+
+
+def test_excel_long_metrics_sheet_has_correct_row_count(
+    tmp_path, long_metrics, wide_metrics, metric_dictionary, report_passed
+):
+    export_excel(long_metrics, wide_metrics, metric_dictionary, report_passed, tmp_path)
+    df = pd.read_excel(tmp_path / "metrics_output.xlsx", sheet_name="long_metrics")
+    assert len(df) == len(long_metrics)
+
+
+def test_excel_metric_dictionary_sheet_has_expected_columns(
+    tmp_path, long_metrics, wide_metrics, metric_dictionary, report_passed
+):
+    export_excel(long_metrics, wide_metrics, metric_dictionary, report_passed, tmp_path)
+    df = pd.read_excel(tmp_path / "metrics_output.xlsx", sheet_name="metric_dictionary")
+    for col in ["id", "label", "type", "unit", "decimals", "description"]:
+        assert col in df.columns
+
+
+def test_excel_validation_report_sheet_contains_status(
+    tmp_path, long_metrics, wide_metrics, metric_dictionary, report_passed
+):
+    export_excel(long_metrics, wide_metrics, metric_dictionary, report_passed, tmp_path)
+    df = pd.read_excel(tmp_path / "metrics_output.xlsx", sheet_name="validation_report")
+    assert "passed" in df["value"].astype(str).values

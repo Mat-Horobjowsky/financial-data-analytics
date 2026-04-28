@@ -72,6 +72,12 @@ def test_run_writes_validation_report_json(tmp_path):
     assert (out / "validation_report.json").exists()
 
 
+def test_run_writes_metrics_output_xlsx(tmp_path):
+    out = tmp_path / "out"
+    _cli("run", "--input", str(SAMPLE_CSV), "--output", str(out))
+    assert (out / "metrics_output.xlsx").exists()
+
+
 def test_run_prints_output_file_names(tmp_path):
     out = tmp_path / "out"
     result = _cli("run", "--input", str(SAMPLE_CSV), "--output", str(out))

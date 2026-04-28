@@ -2,6 +2,7 @@ import pandas as pd
 import pytest
 
 from metrics_engine.output_builder import (
+    apply_output_rounding,
     build_long_metrics,
     build_metric_dictionary,
     build_wide_metrics,
@@ -192,3 +193,135 @@ def test_metric_dictionary_populated_even_with_empty_long(registry):
     md = build_metric_dictionary(registry)
     assert not md.empty
     assert len(md) == len(registry["metrics"])
+
+
+# ── apply_output_rounding ─────────────────────────────────────────────────────
+
+@pytest.fixture
+def unrounded_row(registry):
+    """Single row with values needing rounding."""
+    return pd.DataFrame({
+        "rollup_level": ["date_only"],
+        "date": pd.to_datetime(["2024-01-01"]),
+        "metric_id": ["total_revenue"],
+        "label": ["Total Revenue"],
+        "value": [1234.5678],
+        "unit": ["USD"],
+    })
+
+
+def test_apply_output_rounding_rounds_value_per_metric_decimals(unrounded_row, registry):
+    result = apply_output_rounding(unrounded_row, registry)
+    assert result.loc[0, "value"] == 1235.0  # decimals=0
+
+
+def test_apply_output_rounding_different_metrics_use_own_decimals(registry):
+    df = pd.DataFrame({
+        "rollup_level": ["date_only", "date_only"],
+        "date": pd.to_datetime(["2024-01-01", "2024-01-01"]),
+        "metric_id": ["total_revenue", "utilization_pct"],
+        "label": ["Total Revenue", "Utilization Rate"],
+        "value": [1234.5678, 80.1234],
+        "unit": ["USD", "%"],
+    })
+    result = apply_output_rounding(df, registry)
+    rev = result[result["metric_id"] == "total_revenue"].iloc[0]
+    util = result[result["metric_id"] == "utilization_pct"].iloc[0]
+    assert rev["value"] == 1235.0       # decimals=0
+    assert util["value"] == pytest.approx(80.1)  # decimals=1
+
+
+def test_apply_output_rounding_rounds_prior_period_value(registry):
+    df = pd.DataFrame({
+        "rollup_level": ["date_only"],
+        "date": pd.to_datetime(["2024-02-01"]),
+        "metric_id": ["total_revenue"],
+        "label": ["Total Revenue"],
+        "value": [2000.0],
+        "unit": ["USD"],
+        "prior_period_value": [1234.5678],
+        "period_change": [765.4322],
+        "period_change_pct": [62.001],
+    })
+    result = apply_output_rounding(df, registry)
+    assert result.loc[0, "prior_period_value"] == 1235.0  # decimals=0
+
+
+def test_apply_output_rounding_rounds_period_change(registry):
+    df = pd.DataFrame({
+        "rollup_level": ["date_only"],
+        "date": pd.to_datetime(["2024-02-01"]),
+        "metric_id": ["utilization_pct"],
+        "label": ["Utilization Rate"],
+        "value": [80.0],
+        "unit": ["%"],
+        "prior_period_value": [79.0],
+        "period_change": [1.2345],
+        "period_change_pct": [1.5631],
+    })
+    result = apply_output_rounding(df, registry)
+    assert result.loc[0, "period_change"] == pytest.approx(1.2)  # decimals=1
+
+
+def test_apply_output_rounding_rounds_period_change_pct_to_2(registry):
+    df = pd.DataFrame({
+        "rollup_level": ["date_only"],
+        "date": pd.to_datetime(["2024-02-01"]),
+        "metric_id": ["total_revenue"],
+        "label": ["Total Revenue"],
+        "value": [2000.0],
+        "unit": ["USD"],
+        "prior_period_value": [1000.0],
+        "period_change": [1000.0],
+        "period_change_pct": [100.1234567],
+    })
+    result = apply_output_rounding(df, registry)
+    assert result.loc[0, "period_change_pct"] == pytest.approx(100.12)
+
+
+def test_apply_output_rounding_preserves_nan_in_value(registry):
+    df = pd.DataFrame({
+        "rollup_level": ["date_only"],
+        "date": pd.to_datetime(["2024-01-01"]),
+        "metric_id": ["total_revenue"],
+        "label": ["Total Revenue"],
+        "value": [float("nan")],
+        "unit": ["USD"],
+    })
+    result = apply_output_rounding(df, registry)
+    assert pd.isna(result.loc[0, "value"])
+
+
+def test_apply_output_rounding_preserves_nan_in_time_columns(registry):
+    df = pd.DataFrame({
+        "rollup_level": ["date_only"],
+        "date": pd.to_datetime(["2024-01-01"]),
+        "metric_id": ["total_revenue"],
+        "label": ["Total Revenue"],
+        "value": [1000.0],
+        "unit": ["USD"],
+        "prior_period_value": [float("nan")],
+        "period_change": [float("nan")],
+        "period_change_pct": [float("nan")],
+    })
+    result = apply_output_rounding(df, registry)
+    assert pd.isna(result.loc[0, "prior_period_value"])
+    assert pd.isna(result.loc[0, "period_change"])
+    assert pd.isna(result.loc[0, "period_change_pct"])
+
+
+def test_apply_output_rounding_skips_absent_time_columns(unrounded_row, registry):
+    result = apply_output_rounding(unrounded_row, registry)
+    assert "prior_period_value" not in result.columns
+    assert "period_change_pct" not in result.columns
+
+
+def test_apply_output_rounding_does_not_mutate_input(unrounded_row, registry):
+    apply_output_rounding(unrounded_row, registry)
+    assert unrounded_row.loc[0, "value"] == pytest.approx(1234.5678)
+
+
+def test_apply_output_rounding_empty_df_returns_empty(registry):
+    df = pd.DataFrame(columns=["rollup_level", "date", "metric_id", "label", "value", "unit"])
+    result = apply_output_rounding(df, registry)
+    assert result.empty

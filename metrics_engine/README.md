@@ -105,10 +105,11 @@ All four files are written to the output directory on a successful run.
 
 | File | Description |
 |---|---|
-| `long_metrics.csv` | One row per metric per rollup level. Best for filtering and analysis. |
+| `long_metrics.csv` | One row per metric per rollup level. Values rounded per metric config. Best for filtering and analysis. |
 | `wide_metrics.csv` | One row per date+segment combination with metrics as columns. Best for quick visuals. |
 | `metric_dictionary.csv` | Definitions, units, and descriptions for every metric. |
 | `validation_report.json` | Full validation status, errors, and warnings. |
+| `metrics_output.xlsx` | All four outputs in a single Excel workbook (long\_metrics, wide\_metrics, metric\_dictionary, validation\_report sheets). Header row frozen; columns auto-sized. |
 
 ---
 
@@ -148,14 +149,20 @@ Metrics Engine can optionally enrich `long_metrics.csv` with prior-period compar
 
 ```
 py -m metrics_engine.cli run --input data/sample_data_centers.csv --output outputs/time_test/ --with-time
+```
 
 Adds:
 
-prior_period_value
-period_change
-period_change_pct
+- `prior_period_value` — previous period's value (rounded per metric's `decimals`)
+- `period_change` — value minus prior (rounded per metric's `decimals`)
+- `period_change_pct` — percentage change (rounded to 2 decimals; NaN when prior is zero or missing)
 
 Time analysis is applied within each comparable group: rollup_level + segment columns + metric_id, so regions, providers, rollup levels, and metrics are not compared against each other.
+
+## v1.1.1 Output Polish
+
+- **Rounded values** — `value` in `long_metrics.csv` is rounded to each metric's configured `decimals`. Time columns follow the same rounding.
+- **Excel workbook** — every run writes `metrics_output.xlsx` alongside the CSV files.
 
 ---
 

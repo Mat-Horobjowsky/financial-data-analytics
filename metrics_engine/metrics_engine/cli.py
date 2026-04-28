@@ -10,7 +10,7 @@ from metrics_engine import output_builder
 from metrics_engine import schema as schema_mod
 from metrics_engine import time_engine
 from metrics_engine import validator as validator_mod
-from metrics_engine.exporter import export
+from metrics_engine.exporter import export, export_excel
 from metrics_engine.validator import ValidationReport
 
 
@@ -68,8 +68,11 @@ def cmd_run(args) -> None:
 
     result_df = calc_mod.calculate(norm_result.df, registry)
     long_metrics = output_builder.build_long_metrics(result_df, registry)
+    long_metrics = output_builder.apply_output_rounding(long_metrics, registry)
     export_long = (
-        time_engine.add_prior_period_metrics(long_metrics)
+        output_builder.apply_output_rounding(
+            time_engine.add_prior_period_metrics(long_metrics), registry
+        )
         if getattr(args, "with_time", False)
         else long_metrics
     )
@@ -78,9 +81,13 @@ def cmd_run(args) -> None:
 
     out_dir = Path(args.output)
     export(export_long, wide_metrics, metric_dict, report, out_dir)
+    export_excel(export_long, wide_metrics, metric_dict, report, out_dir)
 
     print(f"\nOutput written to: {out_dir.resolve()}")
-    for fname in ["long_metrics.csv", "wide_metrics.csv", "metric_dictionary.csv", "validation_report.json"]:
+    for fname in [
+        "long_metrics.csv", "wide_metrics.csv", "metric_dictionary.csv",
+        "validation_report.json", "metrics_output.xlsx",
+    ]:
         print(f"  {fname}")
 
 
