@@ -1,0 +1,82 @@
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+from report_engine import loader
+from report_engine.html import render_html
+from report_engine.renderer import render_markdown
+
+_OUTPUT_FILES = ["report.md", "report.html", "summary.json"]
+
+
+def _build_summary(data: loader.ReportData) -> dict:
+    summary: dict = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "input_dir": str(data.input_dir),
+        "validation_status": data.validation_status,
+        "error_count": len(data.validation_errors),
+        "warning_count": len(data.validation_warnings),
+    }
+    if not data.long_metrics.empty:
+        df = data.long_metrics
+        if "date" in df.columns:
+            summary["date_range"] = {
+                "min": str(df["date"].min()),
+                "max": str(df["date"].max()),
+            }
+        if "metric_id" in df.columns:
+            summary["metric_count"] = int(df["metric_id"].nunique())
+        if "rollup_level" in df.columns:
+            summary["rollup_levels"] = sorted(df["rollup_level"].dropna().unique().tolist())
+    summary["generated_files"] = _OUTPUT_FILES
+    return summary
+
+
+def cmd_build(args) -> None:
+    try:
+        data = loader.load(args.input)
+    except loader.LoaderError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    out = Path(args.output)
+    out.mkdir(parents=True, exist_ok=True)
+
+    (out / "report.md").write_text(render_markdown(data), encoding="utf-8")
+    (out / "report.html").write_text(render_html(data), encoding="utf-8")
+    (out / "summary.json").write_text(
+        json.dumps(_build_summary(data), indent=2),
+        encoding="utf-8",
+    )
+
+    print(f"Report written to: {out.resolve()}")
+    for fname in _OUTPUT_FILES:
+        print(f"  {fname}")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        prog="report_engine",
+        description="Generate reports from Metrics Engine output",
+    )
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    build_p = subparsers.add_parser("build", help="Build report from a metrics output directory")
+    build_p.add_argument("--input", required=True, help="Metrics Engine output directory")
+    build_p.add_argument(
+        "--output",
+        default="outputs/report",
+        help="Output directory (default: outputs/report)",
+    )
+
+    args = parser.parse_args()
+    if args.command == "build":
+        cmd_build(args)
+
+
+if __name__ == "__main__":
+    main()
