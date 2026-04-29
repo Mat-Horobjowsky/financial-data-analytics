@@ -141,3 +141,105 @@ def test_render_markdown_filters_to_date_only_rollup():
     # rollup_level column value must NOT appear in the table
     assert "date_only" not in md
     assert "date_region" not in md
+
+
+from datetime import date
+
+from report_engine.html import render_html
+
+
+# ── HTML tests ─────────────────────────────────────────────────────────────────
+
+def test_render_html_returns_string(minimal_data):
+    html = render_html(minimal_data)
+    assert isinstance(html, str)
+
+
+def test_render_html_is_valid_document(minimal_data):
+    html = render_html(minimal_data)
+    assert "<!DOCTYPE html>" in html
+    assert "<html" in html
+    assert "</html>" in html
+
+
+def test_render_html_has_title_heading(minimal_data):
+    html = render_html(minimal_data)
+    assert "<h1>Metrics Report</h1>" in html
+
+
+def test_render_html_shows_validation_status(minimal_data):
+    html = render_html(minimal_data)
+    assert "passed" in html
+
+
+def test_render_html_shows_warnings(minimal_data):
+    html = render_html(minimal_data)
+    assert "Some warning" in html
+
+
+def test_render_html_shows_errors(failed_data):
+    html = render_html(failed_data)
+    assert "Missing column: revenue" in html
+
+
+def test_render_html_shows_metric_value(minimal_data):
+    html = render_html(minimal_data)
+    assert "total_revenue" in html
+
+
+def test_render_html_empty_metrics_shows_placeholder(empty_data):
+    html = render_html(empty_data)
+    assert "No metrics data available" in html
+
+
+def test_render_html_empty_dictionary_shows_placeholder(empty_data):
+    html = render_html(empty_data)
+    assert "No metric dictionary available" in html
+
+
+def test_render_html_escapes_special_characters():
+    data = ReportData(
+        input_dir=Path("outputs/<test>"),
+        validation_status="passed",
+        validation_errors=[],
+        validation_warnings=["Warning with <b>tags</b> & ampersand"],
+        long_metrics=pd.DataFrame(),
+        wide_metrics=pd.DataFrame(),
+        metric_dictionary=pd.DataFrame(),
+    )
+    html = render_html(data)
+    assert "<b>tags</b>" not in html
+    assert "&lt;b&gt;" in html
+
+
+def test_render_html_filters_to_date_only_rollup():
+    data = ReportData(
+        input_dir=Path("outputs/intake_test"),
+        validation_status="passed",
+        validation_errors=[],
+        validation_warnings=[],
+        long_metrics=pd.DataFrame({
+            "rollup_level": ["date_only", "date_region"],
+            "date": ["2024-01-01", "2024-01-01"],
+            "metric_id": ["total_revenue", "total_revenue"],
+            "label": ["Total Revenue", "Total Revenue"],
+            "value": [5900000.0, 3000000.0],
+            "unit": ["USD", "USD"],
+        }),
+        wide_metrics=pd.DataFrame(),
+        metric_dictionary=pd.DataFrame(),
+    )
+    html = render_html(data)
+    assert "5900000.0" in html
+    assert "3000000.0" not in html
+
+
+def test_render_html_has_inline_style(minimal_data):
+    html = render_html(minimal_data)
+    assert "<style>" in html
+
+
+def test_render_html_report_date_is_deterministic(minimal_data):
+    fixed = date(2024, 6, 1)
+    html = render_html(minimal_data, report_date=fixed)
+    assert "2024-06-01" in html
