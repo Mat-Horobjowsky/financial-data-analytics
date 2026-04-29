@@ -210,6 +210,7 @@ def test_render_html_escapes_special_characters():
     html = render_html(data)
     assert "<b>tags</b>" not in html
     assert "&lt;b&gt;" in html
+    assert "&lt;test&gt;" in html
 
 
 def test_render_html_filters_to_date_only_rollup():
@@ -232,6 +233,8 @@ def test_render_html_filters_to_date_only_rollup():
     html = render_html(data)
     assert "5900000.0" in html
     assert "3000000.0" not in html
+    assert "date_only" not in html
+    assert "date_region" not in html
 
 
 def test_render_html_has_inline_style(minimal_data):
