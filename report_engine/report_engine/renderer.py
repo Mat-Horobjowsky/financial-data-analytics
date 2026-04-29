@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date as _date
 
 from report_engine.loader import ReportData
 
@@ -8,9 +8,11 @@ _DISPLAY_COLS = ["date", "metric_id", "label", "value", "unit"]
 _DICT_COLS = ["id", "label", "type", "unit", "description"]
 
 
-def render_markdown(data: ReportData) -> str:
+def render_markdown(data: ReportData, report_date: _date | None = None) -> str:
+    if report_date is None:
+        report_date = _date.today()
     sections = [
-        _header(data),
+        _header(data, report_date),
         _validation(data),
         _metrics_summary(data),
         _metric_dictionary(data),
@@ -18,11 +20,11 @@ def render_markdown(data: ReportData) -> str:
     return "\n\n".join(s for s in sections if s)
 
 
-def _header(data: ReportData) -> str:
+def _header(data: ReportData, report_date: _date) -> str:
     return (
         f"# Metrics Report\n\n"
         f"**Input:** `{data.input_dir}`  \n"
-        f"**Generated:** {date.today().isoformat()}"
+        f"**Generated:** {report_date.isoformat()}"
     )
 
 
@@ -43,12 +45,14 @@ def _metrics_summary(data: ReportData) -> str:
     df = data.long_metrics
     if "rollup_level" in df.columns:
         df = df[df["rollup_level"] == "date_only"]
+    if df.empty:
+        return "## Metrics Summary\n\n_No metrics data available._"
     cols = [c for c in _DISPLAY_COLS if c in df.columns]
     df = df[cols].fillna("").reset_index(drop=True)
     header = "| " + " | ".join(cols) + " |"
     sep = "| " + " | ".join("---" for _ in cols) + " |"
     rows = [
-        "| " + " | ".join(str(row[c]) for c in cols) + " |"
+        "| " + " | ".join(str(row[c]).replace("|", "\\|") for c in cols) + " |"
         for _, row in df.iterrows()
     ]
     return "\n".join(["## Metrics Summary", "", header, sep] + rows)
@@ -63,7 +67,7 @@ def _metric_dictionary(data: ReportData) -> str:
     header = "| " + " | ".join(cols) + " |"
     sep = "| " + " | ".join("---" for _ in cols) + " |"
     rows = [
-        "| " + " | ".join(str(row[c]) for c in cols) + " |"
+        "| " + " | ".join(str(row[c]).replace("|", "\\|") for c in cols) + " |"
         for _, row in df.iterrows()
     ]
     return "\n".join(["## Metric Dictionary", "", header, sep] + rows)

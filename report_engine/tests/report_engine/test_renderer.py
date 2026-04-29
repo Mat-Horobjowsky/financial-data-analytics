@@ -116,7 +116,28 @@ def test_render_markdown_empty_dictionary_shows_placeholder(empty_data):
     assert "No metric dictionary available" in md
 
 
-def test_render_markdown_filters_to_date_only_rollup(minimal_data):
-    # rollup_level column must not appear in the rendered table columns
-    md = render_markdown(minimal_data)
+def test_render_markdown_filters_to_date_only_rollup():
+    data = ReportData(
+        input_dir=Path("outputs/intake_test"),
+        validation_status="passed",
+        validation_errors=[],
+        validation_warnings=[],
+        long_metrics=pd.DataFrame({
+            "rollup_level": ["date_only", "date_region"],
+            "date": ["2024-01-01", "2024-01-01"],
+            "metric_id": ["total_revenue", "total_revenue"],
+            "label": ["Total Revenue", "Total Revenue"],
+            "value": [5900000.0, 3000000.0],
+            "unit": ["USD", "USD"],
+        }),
+        wide_metrics=pd.DataFrame(),
+        metric_dictionary=pd.DataFrame(),
+    )
+    md = render_markdown(data)
+    # Only the date_only row renders; its value appears
+    assert "5900000.0" in md
+    # The date_region row value must NOT appear
+    assert "3000000.0" not in md
+    # rollup_level column value must NOT appear in the table
     assert "date_only" not in md
+    assert "date_region" not in md
