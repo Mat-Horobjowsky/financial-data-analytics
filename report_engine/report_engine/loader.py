@@ -30,13 +30,23 @@ def load(input_dir: str | Path) -> ReportData:
         raise LoaderError(f"Input path is not a directory: {d}")
 
     vr_path = d / "validation_report.json"
-    if not vr_path.exists():
-        raise LoaderError(f"Required file missing: {vr_path}")
-    vr = json.loads(vr_path.read_text(encoding="utf-8"))
+    if not vr_path.is_file():
+        raise LoaderError(f"Required file missing or not a file: {vr_path}")
+    try:
+        vr = json.loads(vr_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise LoaderError(
+            f"validation_report.json is not valid JSON: {vr_path}"
+        ) from exc
 
     def _load_csv(name: str) -> pd.DataFrame:
         p = d / name
-        return pd.read_csv(p) if p.exists() else pd.DataFrame()
+        if not p.exists():
+            return pd.DataFrame()
+        try:
+            return pd.read_csv(p)
+        except Exception as exc:
+            raise LoaderError(f"Failed to read CSV '{name}': {exc}") from exc
 
     return ReportData(
         input_dir=d,

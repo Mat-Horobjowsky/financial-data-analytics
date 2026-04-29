@@ -68,9 +68,9 @@ def test_load_sets_input_dir(valid_input_dir):
     assert data.input_dir == valid_input_dir
 
 
-def test_load_missing_dir_raises():
+def test_load_missing_dir_raises(tmp_path):
     with pytest.raises(LoaderError, match="not found"):
-        load("/nonexistent/path/xyz")
+        load(tmp_path / "does_not_exist")
 
 
 def test_load_missing_validation_report_raises(tmp_path):
@@ -106,3 +106,9 @@ def test_load_accepts_string_path(tmp_path):
     )
     data = load(str(tmp_path))
     assert data.validation_status == "passed"
+
+
+def test_load_corrupt_validation_report_raises(tmp_path):
+    (tmp_path / "validation_report.json").write_text("not valid json {{{", encoding="utf-8")
+    with pytest.raises(LoaderError, match="not valid JSON"):
+        load(tmp_path)
