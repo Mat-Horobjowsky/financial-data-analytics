@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip install *)",
+      "Bash(pytest)",
+      "Bash(py -m metrics_engine.cli --help)",
+      "Bash(metrics-engine --help)",
+      "Bash(py -m report_engine.cli --help)",
+      "Bash(report-engine --help)"
+    ]
+  }
+}
