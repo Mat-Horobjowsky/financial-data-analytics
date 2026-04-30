@@ -8,8 +8,24 @@ Thumbs.db
 # Python / Jupyter
 # -------------------------
 __pycache__/
+*/__pycache__/
+**/__pycache__/
 *.pyc
 .ipynb_checkpoints/
+
+# -------------------------
+# Virtual environments
+# -------------------------
+.venv/
+*/.venv/
+**/.venv/
+
+# -------------------------
+# Pytest
+# -------------------------
+.pytest_cache/
+*/.pytest_cache/
+**/.pytest_cache/
 
 # -------------------------
 # Data files (avoid large/raw data)
@@ -30,7 +46,8 @@ data/raw/
 *.pbix~
 *.pbit~
 
-# Large/local project files not intended for this repo commit
-data_center_agent/
-excel/Electricity_Model.xlsx
-sql/coffee-king-project/
+# Large/local files not intended for repo commit
+archive/excel/Electricity_Model.xlsx
+archive/sql/coffee-king-project/
+
+archive/data_center_agent/
