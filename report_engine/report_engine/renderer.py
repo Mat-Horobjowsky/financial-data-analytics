@@ -8,6 +8,16 @@ from report_engine.loader import ReportData
 
 _DISPLAY_COLS = ["date", "metric_id", "label", "value", "unit"]
 _TIME_COLS = ["prior_period_value", "period_change", "period_change_pct"]
+_COL_LABELS = {
+    "date": "Date",
+    "metric_id": "Metric ID",
+    "label": "Metric",
+    "value": "Value",
+    "unit": "Unit",
+    "prior_period_value": "Prior Period",
+    "period_change": "Change",
+    "period_change_pct": "Change %",
+}
 _DICT_COLS = ["id", "label", "type", "unit", "description"]
 
 
@@ -61,7 +71,8 @@ def _metrics_summary(data: ReportData) -> str:
         if "period_change_pct" in df.columns:
             df["period_change_pct"] = [format_metric_value(v, "%") for v in df["period_change_pct"]]
     df = df.fillna("").reset_index(drop=True)
-    header = "| " + " | ".join(cols) + " |"
+    display_cols = [_COL_LABELS.get(c, c) for c in cols]
+    header = "| " + " | ".join(display_cols) + " |"
     sep = "| " + " | ".join("---" for _ in cols) + " |"
     rows = [
         "| " + " | ".join(str(row[c]).replace("|", "\\|") for c in cols) + " |"

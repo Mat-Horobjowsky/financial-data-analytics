@@ -408,9 +408,12 @@ def time_enriched_data():
 
 def test_render_markdown_shows_time_columns_when_present(time_enriched_data):
     md = render_markdown(time_enriched_data)
-    assert "prior_period_value" in md
-    assert "period_change" in md
-    assert "period_change_pct" in md
+    assert "Prior Period" in md
+    assert "Change" in md
+    assert "Change %" in md
+    assert "prior_period_value" not in md
+    assert "period_change" not in md
+    assert "period_change_pct" not in md
 
 
 def test_render_markdown_formats_prior_period_value_using_unit(time_enriched_data):
@@ -442,9 +445,12 @@ def test_render_markdown_omits_time_columns_when_absent(minimal_data):
 
 def test_render_html_shows_time_columns_when_present(time_enriched_data):
     html = render_html(time_enriched_data)
-    assert "prior_period_value" in html
-    assert "period_change" in html
-    assert "period_change_pct" in html
+    assert "Prior Period" in html
+    assert "Change" in html
+    assert "Change %" in html
+    assert "prior_period_value" not in html
+    assert "period_change" not in html
+    assert "period_change_pct" not in html
 
 
 def test_render_html_formats_prior_period_value_using_unit(time_enriched_data):
@@ -467,3 +473,41 @@ def test_render_html_omits_time_columns_when_absent(minimal_data):
     assert "prior_period_value" not in html
     assert "period_change" not in html
     assert "period_change_pct" not in html
+
+
+# ── Base column display-label tests ────────────────────────────────────────────
+
+def test_render_markdown_base_columns_use_display_labels(minimal_data):
+    md = render_markdown(minimal_data)
+    summary_start = md.index("## Metrics Summary")
+    header_row = next(
+        line for line in md[summary_start:].splitlines()
+        if line.startswith("|")
+    )
+    assert "Date" in header_row
+    assert "Metric ID" in header_row
+    assert "Value" in header_row
+    assert "Unit" in header_row
+    assert "date" not in header_row
+    assert "metric_id" not in header_row
+    assert "| label |" not in header_row
+    assert "| value |" not in header_row
+    assert "| unit |" not in header_row
+
+
+def test_render_html_base_columns_use_display_labels(minimal_data):
+    html = render_html(minimal_data)
+    # Scope assertions to the Metrics Summary table only; Metric Dictionary
+    # still renders raw names like "label" and "unit" (out of scope).
+    summary_start = html.index("<h2>Metrics Summary</h2>")
+    dict_start = html.index("<h2>Metric Dictionary</h2>")
+    summary_html = html[summary_start:dict_start]
+    assert "<th>Date</th>" in summary_html
+    assert "<th>Metric ID</th>" in summary_html
+    assert "<th>Value</th>" in summary_html
+    assert "<th>Unit</th>" in summary_html
+    assert "<th>date</th>" not in summary_html
+    assert "<th>metric_id</th>" not in summary_html
+    assert "<th>label</th>" not in summary_html
+    assert "<th>value</th>" not in summary_html
+    assert "<th>unit</th>" not in summary_html

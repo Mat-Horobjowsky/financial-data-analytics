@@ -17,7 +17,9 @@
       "Bash(python -m pytest tests/report_engine/test_renderer.py -k \"time\" -v)",
       "Bash(python -m pytest tests/report_engine/test_renderer.py -k \"period\" -v)",
       "Bash(python -m pytest tests/report_engine/test_renderer.py -k \"time or period\" -v)",
-      "Bash(python -m pytest -v)"
+      "Bash(python -m pytest -v)",
+      "Bash(python -m pytest -k \"time or period\" -v)",
+      "Bash(python -m pytest -k \"time or period or base\" -v)"
     ]
   }
 }
