@@ -33,7 +33,13 @@ CSV / Excel
 Requires Python 3.11+.
 
 ```bash
-pip install -r requirements.txt
+pip install -e .
+```
+
+For development (includes test runner):
+
+```bash
+pip install -e ".[dev]"
 ```
 
 Config files live in `config/`:
@@ -46,30 +52,23 @@ Config files live in `config/`:
 
 ### Validate only (no files written)
 
-```
-py -m metrics_engine.cli validate --input <file>
+```bash
+metrics-engine validate --input <file>
 ```
 
 Checks for errors and data quality issues. Prints a status report. Exits non-zero if validation failed.
 
-```
-python -m metrics_engine.cli validate --input <file>
-```
-
 ### Full run (validate + calculate + export)
 
-```
-py -m metrics_engine.cli run --input <file> --output <dir>
-```
-
-```
-python -m metrics_engine.cli run --input <file> --output <dir>
+```bash
+metrics-engine run --input <file> --output <dir>
 ```
 
 Optional flags:
 - `--config config/metrics.yaml` (default)
 - `--schema config/schema.yaml` (default)
 - `--dry-run` — validate only, same as `validate` subcommand
+- `--with-time` — enrich output with prior-period comparison columns
 
 ---
 
@@ -77,12 +76,12 @@ Optional flags:
 
 Using the cleaned Intake Engine output:
 
-```
-py -m metrics_engine.cli validate --input data/messy_data_center_sample_for_intake_clean.csv
+```bash
+metrics-engine validate --input data/messy_data_center_sample_for_intake_clean.csv
 ```
 
-```
-py -m metrics_engine.cli run --input data/messy_data_center_sample_for_intake_clean.csv --output outputs/intake_test/
+```bash
+metrics-engine run --input data/messy_data_center_sample_for_intake_clean.csv --output outputs/intake_test/
 ```
 
 ---
@@ -91,9 +90,8 @@ py -m metrics_engine.cli run --input data/messy_data_center_sample_for_intake_cl
 
 Running Metrics Engine on cleaned Intake Engine output produces a validation summary and five output files:
 
-```
-py -m metrics_engine.cli run --input data/messy_data_center_sample_for_intake_clean.csv --output outputs/intake_test/ --with-time
-
+```bash
+metrics-engine run --input data/messy_data_center_sample_for_intake_clean.csv --output outputs/intake_test/ --with-time
 ```
 ![Metrics Engine CLI output](docs/images/metrics_terminal.png)
 
@@ -174,8 +172,8 @@ Example:
 
 Metrics Engine can optionally enrich `long_metrics.csv` with prior-period comparison fields:
 
-```
-py -m metrics_engine.cli run --input data/sample_data_centers.csv --output outputs/time_test/ --with-time
+```bash
+metrics-engine run --input data/sample_data_centers.csv --output outputs/time_test/ --with-time
 ```
 
 Adds:

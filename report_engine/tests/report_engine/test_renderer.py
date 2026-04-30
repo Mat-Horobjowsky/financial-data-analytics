@@ -1,8 +1,10 @@
+from datetime import date
 from pathlib import Path
 
 import pandas as pd
 import pytest
 
+from report_engine.html import render_html
 from report_engine.loader import ReportData
 from report_engine.renderer import render_markdown
 
@@ -134,10 +136,10 @@ def test_render_markdown_filters_to_date_only_rollup():
         metric_dictionary=pd.DataFrame(),
     )
     md = render_markdown(data)
-    # Only the date_only row renders; its value appears
-    assert "5900000.0" in md
+    # Only the date_only row renders; its formatted value appears
+    assert "$5,900,000.00" in md
     # The date_region row value must NOT appear
-    assert "3000000.0" not in md
+    assert "$3,000,000.00" not in md
     # rollup_level column value must NOT appear in the table
     assert "date_only" not in md
     assert "date_region" not in md
@@ -231,8 +233,10 @@ def test_render_html_filters_to_date_only_rollup():
         metric_dictionary=pd.DataFrame(),
     )
     html = render_html(data)
-    assert "5900000.0" in html
-    assert "3000000.0" not in html
+    # Only the date_only row renders; its formatted value appears
+    assert "$5,900,000.00" in html
+    # The date_region row value must NOT appear
+    assert "$3,000,000.00" not in html
     assert "date_only" not in html
     assert "date_region" not in html
 
@@ -246,3 +250,220 @@ def test_render_html_report_date_is_deterministic(minimal_data):
     fixed = date(2024, 6, 1)
     html = render_html(minimal_data, report_date=fixed)
     assert "2024-06-01" in html
+
+
+# ── Formatting tests ───────────────────────────────────────────────────────────
+
+@pytest.fixture
+def multi_metric_data():
+    return ReportData(
+        input_dir=Path("/absolute/path/to/intake_test"),
+        validation_status="passed",
+        validation_errors=[],
+        validation_warnings=[],
+        long_metrics=pd.DataFrame({
+            "rollup_level": ["date_only", "date_only", "date_only", "date_only"],
+            "date": ["2024-02-01", "2024-01-01", "2024-01-01", "2024-02-01"],
+            "metric_id": ["total_revenue", "utilization_pct", "total_revenue", "utilization_pct"],
+            "label": ["Total Revenue", "Utilization Rate", "Total Revenue", "Utilization Rate"],
+            "value": [6150000.0, 84.8, 5900000.0, 81.2],
+            "unit": ["USD", "%", "USD", "%"],
+        }),
+        wide_metrics=pd.DataFrame(),
+        metric_dictionary=pd.DataFrame(),
+    )
+
+
+def test_render_markdown_formats_usd_value_as_currency(multi_metric_data):
+    md = render_markdown(multi_metric_data)
+    assert "$5,900,000.00" in md
+    assert "5900000.0" not in md
+
+
+def test_render_markdown_formats_percent_value_with_symbol(multi_metric_data):
+    md = render_markdown(multi_metric_data)
+    assert "81.2%" in md
+    assert "| 81.2 |" not in md
+
+
+def test_render_markdown_formats_comma_separates_large_whole_number():
+    data = ReportData(
+        input_dir=Path("outputs/test"),
+        validation_status="passed",
+        validation_errors=[],
+        validation_warnings=[],
+        long_metrics=pd.DataFrame({
+            "rollup_level": ["date_only"],
+            "date": ["2024-01-01"],
+            "metric_id": ["contracted_kw"],
+            "label": ["Total Contracted (KW)"],
+            "value": [178700.0],
+            "unit": ["KW"],
+        }),
+        wide_metrics=pd.DataFrame(),
+        metric_dictionary=pd.DataFrame(),
+    )
+    md = render_markdown(data)
+    assert "178,700" in md
+    assert "178700.0" not in md
+
+
+def test_render_html_formats_usd_value_as_currency(multi_metric_data):
+    html = render_html(multi_metric_data)
+    assert "$5,900,000.00" in html
+    assert "5900000.0" not in html
+
+
+def test_render_html_formats_percent_value_with_symbol(multi_metric_data):
+    html = render_html(multi_metric_data)
+    assert "81.2%" in html
+    assert ">81.2<" not in html
+
+
+# ── Sort tests ─────────────────────────────────────────────────────────────────
+
+def test_render_markdown_sorts_rows_by_date_then_metric_id(multi_metric_data):
+    md = render_markdown(multi_metric_data)
+    summary_start = md.index("## Metrics Summary")
+    rows = [
+        line for line in md[summary_start:].splitlines()
+        if line.startswith("| 2024")
+    ]
+    assert rows[0].startswith("| 2024-01-01")
+    assert "total_revenue" in rows[0]
+    assert rows[1].startswith("| 2024-01-01")
+    assert "utilization_pct" in rows[1]
+    assert rows[2].startswith("| 2024-02-01")
+    assert "total_revenue" in rows[2]
+
+
+def test_render_html_sorts_rows_by_date_then_metric_id(multi_metric_data):
+    html = render_html(multi_metric_data)
+    pos_jan_revenue = html.index("2024-01-01")
+    pos_jan_util = html.index("utilization_pct")
+    pos_feb_revenue = html.rindex("2024-02-01")
+    assert pos_jan_revenue < pos_jan_util < pos_feb_revenue
+
+
+# ── Path display tests ─────────────────────────────────────────────────────────
+
+def test_render_markdown_shows_folder_name_only_not_full_path():
+    abs_path = Path("/absolute/path/to/intake_test")
+    data = ReportData(
+        input_dir=abs_path,
+        validation_status="passed",
+        validation_errors=[],
+        validation_warnings=[],
+        long_metrics=pd.DataFrame(),
+        wide_metrics=pd.DataFrame(),
+        metric_dictionary=pd.DataFrame(),
+    )
+    md = render_markdown(data)
+    assert "intake_test" in md
+    assert str(abs_path.parent) not in md
+
+
+def test_render_html_shows_folder_name_only_not_full_path():
+    abs_path = Path("/absolute/path/to/intake_test")
+    data = ReportData(
+        input_dir=abs_path,
+        validation_status="passed",
+        validation_errors=[],
+        validation_warnings=[],
+        long_metrics=pd.DataFrame(),
+        wide_metrics=pd.DataFrame(),
+        metric_dictionary=pd.DataFrame(),
+    )
+    html = render_html(data)
+    assert "intake_test" in html
+    assert str(abs_path.parent) not in html
+
+
+# ── Period-over-period tests ────────────────────────────────────────────────────
+
+@pytest.fixture
+def time_enriched_data():
+    # prior_period_value uses 5_850_000 (distinct from value=5_900_000 and value=6_150_000)
+    # so format assertions cannot pass vacuously from the value column.
+    return ReportData(
+        input_dir=Path("outputs/intake_test"),
+        validation_status="passed",
+        validation_errors=[],
+        validation_warnings=[],
+        long_metrics=pd.DataFrame({
+            "rollup_level": ["date_only", "date_only"],
+            "date": ["2024-01-01", "2024-02-01"],
+            "metric_id": ["total_revenue", "total_revenue"],
+            "label": ["Total Revenue", "Total Revenue"],
+            "value": [5900000.0, 6150000.0],
+            "unit": ["USD", "USD"],
+            "prior_period_value": [float("nan"), 5850000.0],
+            "period_change": [float("nan"), 300000.0],
+            "period_change_pct": [float("nan"), 5.13],
+        }),
+        wide_metrics=pd.DataFrame(),
+        metric_dictionary=pd.DataFrame(),
+    )
+
+
+def test_render_markdown_shows_time_columns_when_present(time_enriched_data):
+    md = render_markdown(time_enriched_data)
+    assert "prior_period_value" in md
+    assert "period_change" in md
+    assert "period_change_pct" in md
+
+
+def test_render_markdown_formats_prior_period_value_using_unit(time_enriched_data):
+    md = render_markdown(time_enriched_data)
+    assert "$5,850,000.00" in md
+
+
+def test_render_markdown_formats_period_change_using_unit(time_enriched_data):
+    md = render_markdown(time_enriched_data)
+    assert "$300,000.00" in md
+
+
+def test_render_markdown_formats_period_change_pct_as_percent(time_enriched_data):
+    md = render_markdown(time_enriched_data)
+    assert "5.13%" in md
+
+
+def test_render_markdown_shows_empty_for_first_period_time_values(time_enriched_data):
+    md = render_markdown(time_enriched_data)
+    assert "nan" not in md.lower()
+
+
+def test_render_markdown_omits_time_columns_when_absent(minimal_data):
+    md = render_markdown(minimal_data)
+    assert "prior_period_value" not in md
+    assert "period_change" not in md
+    assert "period_change_pct" not in md
+
+
+def test_render_html_shows_time_columns_when_present(time_enriched_data):
+    html = render_html(time_enriched_data)
+    assert "prior_period_value" in html
+    assert "period_change" in html
+    assert "period_change_pct" in html
+
+
+def test_render_html_formats_prior_period_value_using_unit(time_enriched_data):
+    html = render_html(time_enriched_data)
+    assert "$5,850,000.00" in html
+
+
+def test_render_html_formats_period_change_using_unit(time_enriched_data):
+    html = render_html(time_enriched_data)
+    assert "$300,000.00" in html
+
+
+def test_render_html_formats_period_change_pct_as_percent(time_enriched_data):
+    html = render_html(time_enriched_data)
+    assert "5.13%" in html
+
+
+def test_render_html_omits_time_columns_when_absent(minimal_data):
+    html = render_html(minimal_data)
+    assert "prior_period_value" not in html
+    assert "period_change" not in html
+    assert "period_change_pct" not in html

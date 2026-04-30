@@ -5,13 +5,13 @@ Generates `report.md`, `report.html`, and `summary.json` from a Metrics Engine o
 ## Usage
 
 ```bash
-py -m report_engine.cli build --input <metrics_output_dir> --output <output_dir>
+report-engine build --input <metrics_output_dir> --output <output_dir>
 ```
 
 Example:
 
 ```bash
-py -m report_engine.cli build \
+report-engine build \
   --input "../metrics_engine/outputs/intake_test" \
   --output outputs/report_test
 ```
@@ -36,6 +36,6 @@ py -m report_engine.cli build \
 ## Development
 
 ```bash
-pip install -r requirements.txt
-py -m pytest tests/ -v
+pip install -e ".[dev]"
+pytest
 ```
