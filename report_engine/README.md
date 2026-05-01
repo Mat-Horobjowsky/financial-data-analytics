@@ -1,6 +1,6 @@
-# report_engine v1.1
+# report_engine v1.2
 
-Generates `report.md`, `report.html`, `summary.json`, and `insights.json` from a Metrics Engine output directory.
+Generates `report.md`, `report.html`, `summary.json`, and `insights.json` from a Metrics Engine output directory. Supports built-in report templates to control which sections are included.
 
 ## Usage
 
@@ -8,13 +8,28 @@ Generates `report.md`, `report.html`, `summary.json`, and `insights.json` from a
 report-engine build --input <metrics_output_dir> --output <output_dir>
 ```
 
-Example:
+With a template:
 
 ```bash
 report-engine build \
   --input "../metrics_engine/outputs/time_test" \
-  --output outputs/report_v11
+  --output outputs/report_v12 \
+  --template executive_summary
 ```
+
+## Templates
+
+The `--template` flag selects which sections appear in `report.md` and `report.html`. Default is `full_report`.
+
+| Template | Sections included |
+|---|---|
+| `full_report` (default) | Header, Validation, KPI Snapshot, Key Insights, Metrics Summary, Metric Dictionary |
+| `executive_summary` | Header, Validation, KPI Snapshot, Key Insights |
+| `metrics_detail` | Header, Validation, Metrics Summary, Metric Dictionary |
+
+`summary.json` and `insights.json` are always written regardless of selected template.
+
+The selected template name is recorded in `summary.json` under the `"template"` key.
 
 ## Input files
 
@@ -29,9 +44,9 @@ report-engine build \
 
 | File | Description |
 |---|---|
-| `report.md` | Markdown report with all sections |
+| `report.md` | Markdown report with selected template sections |
 | `report.html` | Self-contained HTML report with inline CSS |
-| `summary.json` | Machine-readable summary: validation status, metric count, date range, rollup levels |
+| `summary.json` | Machine-readable summary: validation status, metric count, date range, rollup levels, template name |
 | `insights.json` | Deterministic period-over-period insight records (one per metric with valid change data) |
 
 ## Report sections

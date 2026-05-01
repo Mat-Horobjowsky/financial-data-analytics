@@ -6,7 +6,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from report_engine import loader
+from report_engine import loader, templates
 from report_engine.html import render_html
 from report_engine.insights import build_insights, has_period_data
 from report_engine.renderer import render_markdown
@@ -14,13 +14,14 @@ from report_engine.renderer import render_markdown
 _OUTPUT_FILES = ["report.md", "report.html", "summary.json", "insights.json"]
 
 
-def _build_summary(data: loader.ReportData) -> dict:
+def _build_summary(data: loader.ReportData, template_name: str) -> dict:
     summary: dict = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "input_dir": str(data.input_dir),
         "validation_status": data.validation_status,
         "error_count": len(data.validation_errors),
         "warning_count": len(data.validation_warnings),
+        "template": template_name,
     }
     if not data.long_metrics.empty:
         df = data.long_metrics
@@ -47,6 +48,8 @@ def cmd_build(args) -> None:
     out = Path(args.output)
     out.mkdir(parents=True, exist_ok=True)
 
+    sections = templates.get_sections(args.template)
+
     insights = build_insights(data)
     insights_payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -54,10 +57,10 @@ def cmd_build(args) -> None:
         "insights": insights,
     }
 
-    (out / "report.md").write_text(render_markdown(data), encoding="utf-8")
-    (out / "report.html").write_text(render_html(data), encoding="utf-8")
+    (out / "report.md").write_text(render_markdown(data, sections=sections), encoding="utf-8")
+    (out / "report.html").write_text(render_html(data, sections=sections), encoding="utf-8")
     (out / "summary.json").write_text(
-        json.dumps(_build_summary(data), indent=2),
+        json.dumps(_build_summary(data, args.template), indent=2),
         encoding="utf-8",
     )
     (out / "insights.json").write_text(
@@ -83,6 +86,12 @@ def main() -> None:
         "--output",
         default="outputs/report",
         help="Output directory (default: outputs/report)",
+    )
+    build_p.add_argument(
+        "--template",
+        default=templates.DEFAULT_TEMPLATE,
+        choices=templates.VALID_TEMPLATES,
+        help=f"Report template (default: {templates.DEFAULT_TEMPLATE})",
     )
 
     args = parser.parse_args()

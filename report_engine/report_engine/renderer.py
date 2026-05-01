@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import date as _date
 from pathlib import Path
 
+from report_engine import templates as _templates
 from report_engine.formatting import format_metric_value
 from report_engine.insights import build_insights, has_period_data, snapshot_rows
 from report_engine.loader import ReportData
@@ -29,18 +30,24 @@ _DICT_COL_LABELS = {
 }
 
 
-def render_markdown(data: ReportData, report_date: _date | None = None) -> str:
+def render_markdown(
+    data: ReportData,
+    report_date: _date | None = None,
+    sections: list[str] | None = None,
+) -> str:
     if report_date is None:
         report_date = _date.today()
-    sections = [
-        _header(data, report_date),
-        _validation(data),
-        _kpi_snapshot(data),
-        _key_insights(data),
-        _metrics_summary(data),
-        _metric_dictionary(data),
-    ]
-    return "\n\n".join(s for s in sections if s)
+    if sections is None:
+        sections = _templates.get_sections(_templates.DEFAULT_TEMPLATE)
+    _dispatch = {
+        "header":            lambda d: _header(d, report_date),
+        "validation":        _validation,
+        "kpi_snapshot":      _kpi_snapshot,
+        "key_insights":      _key_insights,
+        "metrics_summary":   _metrics_summary,
+        "metric_dictionary": _metric_dictionary,
+    }
+    return "\n\n".join(s for s in (_dispatch[sid](data) for sid in sections) if s)
 
 
 def _header(data: ReportData, report_date: _date) -> str:

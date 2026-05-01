@@ -670,3 +670,95 @@ def test_render_html_metric_dictionary_uses_display_headers(minimal_data):
     assert "<th>id</th>" not in dict_header
     assert "<th>label</th>" not in dict_header
     assert "<th>type</th>" not in dict_header
+
+
+# ── Template section selection tests ───────────────────────────────────────────
+
+from report_engine.templates import get_sections
+
+
+def test_render_markdown_default_matches_full_report(minimal_data):
+    full_sections = get_sections("full_report")
+    assert render_markdown(minimal_data) == render_markdown(minimal_data, sections=full_sections)
+
+
+def test_render_html_default_matches_full_report(minimal_data):
+    full_sections = get_sections("full_report")
+    fixed = date(2024, 6, 1)
+    assert render_html(minimal_data, report_date=fixed) == render_html(
+        minimal_data, report_date=fixed, sections=full_sections
+    )
+
+
+def test_render_markdown_executive_summary_includes_kpi_snapshot(minimal_data):
+    sections = get_sections("executive_summary")
+    md = render_markdown(minimal_data, sections=sections)
+    assert "## KPI Snapshot" in md
+
+
+def test_render_markdown_executive_summary_includes_key_insights(time_enriched_data):
+    sections = get_sections("executive_summary")
+    md = render_markdown(time_enriched_data, sections=sections)
+    assert "## Key Insights" in md
+
+
+def test_render_markdown_executive_summary_omits_metrics_summary(minimal_data):
+    sections = get_sections("executive_summary")
+    md = render_markdown(minimal_data, sections=sections)
+    assert "## Metrics Summary" not in md
+
+
+def test_render_markdown_executive_summary_omits_metric_dictionary(minimal_data):
+    sections = get_sections("executive_summary")
+    md = render_markdown(minimal_data, sections=sections)
+    assert "## Metric Dictionary" not in md
+
+
+def test_render_markdown_metrics_detail_includes_metrics_summary(minimal_data):
+    sections = get_sections("metrics_detail")
+    md = render_markdown(minimal_data, sections=sections)
+    assert "## Metrics Summary" in md
+
+
+def test_render_markdown_metrics_detail_includes_metric_dictionary(minimal_data):
+    sections = get_sections("metrics_detail")
+    md = render_markdown(minimal_data, sections=sections)
+    assert "## Metric Dictionary" in md
+
+
+def test_render_markdown_metrics_detail_omits_kpi_snapshot(minimal_data):
+    sections = get_sections("metrics_detail")
+    md = render_markdown(minimal_data, sections=sections)
+    assert "## KPI Snapshot" not in md
+
+
+def test_render_markdown_metrics_detail_omits_key_insights(time_enriched_data):
+    # time_enriched_data has period columns so key_insights would render under full_report;
+    # metrics_detail explicitly excludes it.
+    sections = get_sections("metrics_detail")
+    md = render_markdown(time_enriched_data, sections=sections)
+    assert "## Key Insights" not in md
+
+
+def test_render_html_executive_summary_omits_metrics_summary(minimal_data):
+    sections = get_sections("executive_summary")
+    html = render_html(minimal_data, sections=sections)
+    assert "<h2>Metrics Summary</h2>" not in html
+
+
+def test_render_html_executive_summary_omits_metric_dictionary(minimal_data):
+    sections = get_sections("executive_summary")
+    html = render_html(minimal_data, sections=sections)
+    assert "<h2>Metric Dictionary</h2>" not in html
+
+
+def test_render_html_metrics_detail_omits_kpi_snapshot(minimal_data):
+    sections = get_sections("metrics_detail")
+    html = render_html(minimal_data, sections=sections)
+    assert "<h2>KPI Snapshot</h2>" not in html
+
+
+def test_render_html_metrics_detail_omits_key_insights(time_enriched_data):
+    sections = get_sections("metrics_detail")
+    html = render_html(time_enriched_data, sections=sections)
+    assert "<h2>Key Insights</h2>" not in html

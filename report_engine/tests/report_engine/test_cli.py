@@ -210,3 +210,88 @@ def test_build_insights_json_has_insights_when_period_data(tmp_path):
 def test_build_prints_insights_json(valid_input_dir, tmp_path):
     result = _cli("build", "--input", str(valid_input_dir), "--output", str(tmp_path / "out"))
     assert "insights.json" in result.stdout
+
+
+# ── Template flag tests ────────────────────────────────────────────────────────
+
+def test_build_default_template_is_full_report(valid_input_dir, tmp_path):
+    out = tmp_path / "out"
+    _cli("build", "--input", str(valid_input_dir), "--output", str(out))
+    data = json.loads((out / "summary.json").read_text(encoding="utf-8"))
+    assert data["template"] == "full_report"
+
+
+def test_build_summary_records_selected_template(valid_input_dir, tmp_path):
+    out = tmp_path / "out"
+    _cli("build", "--input", str(valid_input_dir), "--output", str(out), "--template", "executive_summary")
+    data = json.loads((out / "summary.json").read_text(encoding="utf-8"))
+    assert data["template"] == "executive_summary"
+
+
+def test_build_executive_summary_exits_zero(valid_input_dir, tmp_path):
+    result = _cli("build", "--input", str(valid_input_dir), "--output", str(tmp_path / "out"), "--template", "executive_summary")
+    assert result.returncode == 0
+
+
+def test_build_executive_summary_omits_metrics_summary(valid_input_dir, tmp_path):
+    out = tmp_path / "out"
+    _cli("build", "--input", str(valid_input_dir), "--output", str(out), "--template", "executive_summary")
+    md = (out / "report.md").read_text(encoding="utf-8")
+    assert "## Metrics Summary" not in md
+
+
+def test_build_executive_summary_omits_metric_dictionary(valid_input_dir, tmp_path):
+    out = tmp_path / "out"
+    _cli("build", "--input", str(valid_input_dir), "--output", str(out), "--template", "executive_summary")
+    md = (out / "report.md").read_text(encoding="utf-8")
+    assert "## Metric Dictionary" not in md
+
+
+def test_build_executive_summary_html_omits_metrics_summary(valid_input_dir, tmp_path):
+    out = tmp_path / "out"
+    _cli("build", "--input", str(valid_input_dir), "--output", str(out), "--template", "executive_summary")
+    html = (out / "report.html").read_text(encoding="utf-8")
+    assert "<h2>Metrics Summary</h2>" not in html
+
+
+def test_build_metrics_detail_omits_kpi_snapshot(valid_input_dir, tmp_path):
+    out = tmp_path / "out"
+    _cli("build", "--input", str(valid_input_dir), "--output", str(out), "--template", "metrics_detail")
+    md = (out / "report.md").read_text(encoding="utf-8")
+    assert "## KPI Snapshot" not in md
+
+
+def test_build_metrics_detail_html_omits_kpi_snapshot(valid_input_dir, tmp_path):
+    out = tmp_path / "out"
+    _cli("build", "--input", str(valid_input_dir), "--output", str(out), "--template", "metrics_detail")
+    html = (out / "report.html").read_text(encoding="utf-8")
+    assert "<h2>KPI Snapshot</h2>" not in html
+
+
+def test_build_metrics_detail_includes_metrics_summary(valid_input_dir, tmp_path):
+    out = tmp_path / "out"
+    _cli("build", "--input", str(valid_input_dir), "--output", str(out), "--template", "metrics_detail")
+    md = (out / "report.md").read_text(encoding="utf-8")
+    assert "## Metrics Summary" in md
+
+
+def test_build_invalid_template_exits_nonzero(valid_input_dir, tmp_path):
+    result = _cli("build", "--input", str(valid_input_dir), "--output", str(tmp_path / "out"), "--template", "nonexistent")
+    assert result.returncode != 0
+
+
+def test_build_invalid_template_prints_error(valid_input_dir, tmp_path):
+    result = _cli("build", "--input", str(valid_input_dir), "--output", str(tmp_path / "out"), "--template", "nonexistent")
+    assert "nonexistent" in result.stderr or "invalid choice" in result.stderr
+
+
+def test_build_insights_json_written_for_executive_summary(valid_input_dir, tmp_path):
+    out = tmp_path / "out"
+    _cli("build", "--input", str(valid_input_dir), "--output", str(out), "--template", "executive_summary")
+    assert (out / "insights.json").exists()
+
+
+def test_build_summary_json_written_for_metrics_detail(valid_input_dir, tmp_path):
+    out = tmp_path / "out"
+    _cli("build", "--input", str(valid_input_dir), "--output", str(out), "--template", "metrics_detail")
+    assert (out / "summary.json").exists()

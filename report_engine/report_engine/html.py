@@ -4,6 +4,7 @@ from datetime import date as _date
 from html import escape
 from pathlib import Path
 
+from report_engine import templates as _templates
 from report_engine.formatting import format_metric_value
 from report_engine.insights import build_insights, has_period_data, snapshot_rows
 from report_engine.loader import ReportData
@@ -40,17 +41,24 @@ _STYLE = (
 )
 
 
-def render_html(data: ReportData, report_date: _date | None = None) -> str:
+def render_html(
+    data: ReportData,
+    report_date: _date | None = None,
+    sections: list[str] | None = None,
+) -> str:
     if report_date is None:
         report_date = _date.today()
-    body = "\n".join(s for s in [
-        _header_html(data, report_date),
-        _validation_html(data),
-        _kpi_snapshot_html(data),
-        _key_insights_html(data),
-        _metrics_summary_html(data),
-        _metric_dictionary_html(data),
-    ] if s)
+    if sections is None:
+        sections = _templates.get_sections(_templates.DEFAULT_TEMPLATE)
+    _dispatch = {
+        "header":            lambda d: _header_html(d, report_date),
+        "validation":        _validation_html,
+        "kpi_snapshot":      _kpi_snapshot_html,
+        "key_insights":      _key_insights_html,
+        "metrics_summary":   _metrics_summary_html,
+        "metric_dictionary": _metric_dictionary_html,
+    }
+    body = "\n".join(s for s in (_dispatch[sid](data) for sid in sections) if s)
     return (
         "<!DOCTYPE html>\n"
         '<html lang="en">\n'

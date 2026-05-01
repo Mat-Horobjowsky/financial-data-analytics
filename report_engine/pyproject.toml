@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "report_engine"
-version = "1.1.0"
+version = "1.2.0"
 description = "CLI tool for generating client-facing reports from Metrics Engine output"
 readme = "README.md"
 requires-python = ">=3.11"
