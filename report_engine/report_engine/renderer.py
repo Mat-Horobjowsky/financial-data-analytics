@@ -4,6 +4,7 @@ from datetime import date as _date
 from pathlib import Path
 
 from report_engine.formatting import format_metric_value
+from report_engine.insights import build_insights, has_period_data, snapshot_rows
 from report_engine.loader import ReportData
 
 _DISPLAY_COLS = ["date", "metric_id", "label", "value", "unit"]
@@ -19,6 +20,13 @@ _COL_LABELS = {
     "period_change_pct": "Change %",
 }
 _DICT_COLS = ["id", "label", "type", "unit", "description"]
+_DICT_COL_LABELS = {
+    "id": "Metric ID",
+    "label": "Metric",
+    "type": "Type",
+    "unit": "Unit",
+    "description": "Description",
+}
 
 
 def render_markdown(data: ReportData, report_date: _date | None = None) -> str:
@@ -27,6 +35,8 @@ def render_markdown(data: ReportData, report_date: _date | None = None) -> str:
     sections = [
         _header(data, report_date),
         _validation(data),
+        _kpi_snapshot(data),
+        _key_insights(data),
         _metrics_summary(data),
         _metric_dictionary(data),
     ]
@@ -87,10 +97,44 @@ def _metric_dictionary(data: ReportData) -> str:
     df = data.metric_dictionary
     cols = [c for c in _DICT_COLS if c in df.columns]
     df = df[cols].fillna("").reset_index(drop=True)
-    header = "| " + " | ".join(cols) + " |"
+    display_cols = [_DICT_COL_LABELS.get(c, c) for c in cols]
+    header = "| " + " | ".join(display_cols) + " |"
     sep = "| " + " | ".join("---" for _ in cols) + " |"
     rows = [
         "| " + " | ".join(str(row[c]).replace("|", "\\|") for c in cols) + " |"
         for _, row in df.iterrows()
     ]
     return "\n".join(["## Metric Dictionary", "", header, sep] + rows)
+
+
+def _kpi_snapshot(data: ReportData) -> str:
+    rows = snapshot_rows(data)
+    if not rows:
+        return ""
+    _SNAP_COLS = ["label", "date", "value", "unit"]
+    _SNAP_LABELS = {"label": "Metric", "date": "Latest Period", "value": "Value", "unit": "Unit"}
+    header = "| " + " | ".join(_SNAP_LABELS[c] for c in _SNAP_COLS) + " |"
+    sep = "| " + " | ".join("---" for _ in _SNAP_COLS) + " |"
+    table_rows = []
+    for row in rows:
+        formatted_value = format_metric_value(row["value"], row["unit"])
+        cells = [
+            str(row["label"]).replace("|", "\\|"),
+            str(row["date"]).replace("|", "\\|"),
+            formatted_value.replace("|", "\\|"),
+            str(row["unit"]).replace("|", "\\|"),
+        ]
+        table_rows.append("| " + " | ".join(cells) + " |")
+    return "\n".join(["## KPI Snapshot", "", header, sep] + table_rows)
+
+
+def _key_insights(data: ReportData) -> str:
+    if not has_period_data(data):
+        return ""
+    insights = build_insights(data)
+    if not insights:
+        return ""
+    lines = ["## Key Insights", ""]
+    for insight in insights:
+        lines.append(f"- {insight['text']}")
+    return "\n".join(lines)

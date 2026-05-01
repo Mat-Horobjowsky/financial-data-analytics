@@ -5,6 +5,7 @@ from html import escape
 from pathlib import Path
 
 from report_engine.formatting import format_metric_value
+from report_engine.insights import build_insights, has_period_data, snapshot_rows
 from report_engine.loader import ReportData
 
 _DISPLAY_COLS = ["date", "metric_id", "label", "value", "unit"]
@@ -20,6 +21,13 @@ _COL_LABELS = {
     "period_change_pct": "Change %",
 }
 _DICT_COLS = ["id", "label", "type", "unit", "description"]
+_DICT_COL_LABELS = {
+    "id": "Metric ID",
+    "label": "Metric",
+    "type": "Type",
+    "unit": "Unit",
+    "description": "Description",
+}
 
 _STYLE = (
     "body{font-family:sans-serif;max-width:960px;margin:40px auto;padding:0 20px;color:#222}"
@@ -35,12 +43,14 @@ _STYLE = (
 def render_html(data: ReportData, report_date: _date | None = None) -> str:
     if report_date is None:
         report_date = _date.today()
-    body = "\n".join([
+    body = "\n".join(s for s in [
         _header_html(data, report_date),
         _validation_html(data),
+        _kpi_snapshot_html(data),
+        _key_insights_html(data),
         _metrics_summary_html(data),
         _metric_dictionary_html(data),
-    ])
+    ] if s)
     return (
         "<!DOCTYPE html>\n"
         '<html lang="en">\n'
@@ -115,7 +125,7 @@ def _metric_dictionary_html(data: ReportData) -> str:
     df = data.metric_dictionary
     cols = [c for c in _DICT_COLS if c in df.columns]
     df = df[cols].fillna("").reset_index(drop=True)
-    header = "".join(f"<th>{escape(c)}</th>" for c in cols)
+    header = "".join(f"<th>{escape(_DICT_COL_LABELS.get(c, c))}</th>" for c in cols)
     rows = "".join(
         "<tr>" + "".join(f"<td>{escape(str(row[c]))}</td>" for c in cols) + "</tr>"
         for _, row in df.iterrows()
@@ -124,3 +134,30 @@ def _metric_dictionary_html(data: ReportData) -> str:
         "<h2>Metric Dictionary</h2>\n"
         f"<table><thead><tr>{header}</tr></thead><tbody>{rows}</tbody></table>"
     )
+
+
+def _kpi_snapshot_html(data: ReportData) -> str:
+    rows = snapshot_rows(data)
+    if not rows:
+        return ""
+    _SNAP_LABELS = ["Metric", "Latest Period", "Value", "Unit"]
+    header = "".join(f"<th>{escape(c)}</th>" for c in _SNAP_LABELS)
+    table_rows = ""
+    for row in rows:
+        formatted_value = format_metric_value(row["value"], row["unit"])
+        cells = [row["label"], row["date"], formatted_value, row["unit"]]
+        table_rows += "<tr>" + "".join(f"<td>{escape(str(c))}</td>" for c in cells) + "</tr>"
+    return (
+        "<h2>KPI Snapshot</h2>\n"
+        f"<table><thead><tr>{header}</tr></thead><tbody>{table_rows}</tbody></table>"
+    )
+
+
+def _key_insights_html(data: ReportData) -> str:
+    if not has_period_data(data):
+        return ""
+    insights = build_insights(data)
+    if not insights:
+        return ""
+    items = "".join(f"<li>{escape(i['text'])}</li>" for i in insights)
+    return f"<h2>Key Insights</h2>\n<ul>{items}</ul>"

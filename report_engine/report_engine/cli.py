@@ -8,9 +8,10 @@ from pathlib import Path
 
 from report_engine import loader
 from report_engine.html import render_html
+from report_engine.insights import build_insights, has_period_data
 from report_engine.renderer import render_markdown
 
-_OUTPUT_FILES = ["report.md", "report.html", "summary.json"]
+_OUTPUT_FILES = ["report.md", "report.html", "summary.json", "insights.json"]
 
 
 def _build_summary(data: loader.ReportData) -> dict:
@@ -46,10 +47,21 @@ def cmd_build(args) -> None:
     out = Path(args.output)
     out.mkdir(parents=True, exist_ok=True)
 
+    insights = build_insights(data)
+    insights_payload = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "has_insights": bool(insights),
+        "insights": insights,
+    }
+
     (out / "report.md").write_text(render_markdown(data), encoding="utf-8")
     (out / "report.html").write_text(render_html(data), encoding="utf-8")
     (out / "summary.json").write_text(
         json.dumps(_build_summary(data), indent=2),
+        encoding="utf-8",
+    )
+    (out / "insights.json").write_text(
+        json.dumps(insights_payload, indent=2),
         encoding="utf-8",
     )
 

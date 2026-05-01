@@ -99,7 +99,7 @@ def test_build_summary_has_generated_files(valid_input_dir, tmp_path):
     out = tmp_path / "out"
     _cli("build", "--input", str(valid_input_dir), "--output", str(out))
     data = json.loads((out / "summary.json").read_text(encoding="utf-8"))
-    assert data["generated_files"] == ["report.md", "report.html", "summary.json"]
+    assert data["generated_files"] == ["report.md", "report.html", "summary.json", "insights.json"]
 
 
 def test_build_prints_output_files(valid_input_dir, tmp_path):
@@ -152,3 +152,61 @@ def test_build_report_html_is_valid_document(valid_input_dir, tmp_path):
     html = (out / "report.html").read_text(encoding="utf-8")
     assert "<!DOCTYPE html>" in html
     assert "</html>" in html
+
+
+# ── insights.json tests ────────────────────────────────────────────────────────
+
+def test_build_writes_insights_json(valid_input_dir, tmp_path):
+    out = tmp_path / "out"
+    _cli("build", "--input", str(valid_input_dir), "--output", str(out))
+    assert (out / "insights.json").exists()
+
+
+def test_build_insights_json_is_valid_json(valid_input_dir, tmp_path):
+    out = tmp_path / "out"
+    _cli("build", "--input", str(valid_input_dir), "--output", str(out))
+    data = json.loads((out / "insights.json").read_text(encoding="utf-8"))
+    assert isinstance(data, dict)
+
+
+def test_build_insights_json_has_required_keys(valid_input_dir, tmp_path):
+    out = tmp_path / "out"
+    _cli("build", "--input", str(valid_input_dir), "--output", str(out))
+    data = json.loads((out / "insights.json").read_text(encoding="utf-8"))
+    assert "generated_at" in data
+    assert "has_insights" in data
+    assert "insights" in data
+
+
+def test_build_insights_json_empty_list_when_no_period_data(valid_input_dir, tmp_path):
+    # valid_input_dir has no period_change_pct column — insights list should be empty
+    out = tmp_path / "out"
+    _cli("build", "--input", str(valid_input_dir), "--output", str(out))
+    data = json.loads((out / "insights.json").read_text(encoding="utf-8"))
+    assert data["insights"] == []
+    assert data["has_insights"] is False
+
+
+def test_build_insights_json_has_insights_when_period_data(tmp_path):
+    (tmp_path / "validation_report.json").write_text(
+        json.dumps({"status": "passed", "errors": [], "warnings": []}),
+        encoding="utf-8",
+    )
+    (tmp_path / "long_metrics.csv").write_text(
+        "rollup_level,date,metric_id,label,value,unit,prior_period_value,period_change,period_change_pct\n"
+        "date_only,2024-01-01,total_revenue,Total Revenue,5900000.0,USD,,, \n"
+        "date_only,2024-02-01,total_revenue,Total Revenue,6150000.0,USD,5850000.0,300000.0,5.13\n",
+        encoding="utf-8",
+    )
+    out = tmp_path / "out"
+    _cli("build", "--input", str(tmp_path), "--output", str(out))
+    data = json.loads((out / "insights.json").read_text(encoding="utf-8"))
+    assert data["has_insights"] is True
+    assert len(data["insights"]) == 1
+    assert data["insights"][0]["metric_id"] == "total_revenue"
+    assert data["insights"][0]["direction"] == "up"
+
+
+def test_build_prints_insights_json(valid_input_dir, tmp_path):
+    result = _cli("build", "--input", str(valid_input_dir), "--output", str(tmp_path / "out"))
+    assert "insights.json" in result.stdout

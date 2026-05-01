@@ -497,8 +497,7 @@ def test_render_markdown_base_columns_use_display_labels(minimal_data):
 
 def test_render_html_base_columns_use_display_labels(minimal_data):
     html = render_html(minimal_data)
-    # Scope assertions to the Metrics Summary table only; Metric Dictionary
-    # still renders raw names like "label" and "unit" (out of scope).
+    # Scope assertions to the Metrics Summary table only.
     summary_start = html.index("<h2>Metrics Summary</h2>")
     dict_start = html.index("<h2>Metric Dictionary</h2>")
     summary_html = html[summary_start:dict_start]
@@ -511,3 +510,163 @@ def test_render_html_base_columns_use_display_labels(minimal_data):
     assert "<th>label</th>" not in summary_html
     assert "<th>value</th>" not in summary_html
     assert "<th>unit</th>" not in summary_html
+
+
+# ── KPI Snapshot section tests ─────────────────────────────────────────────────
+
+def test_render_markdown_has_kpi_snapshot_section(minimal_data):
+    md = render_markdown(minimal_data)
+    assert "## KPI Snapshot" in md
+
+
+def test_render_markdown_kpi_snapshot_omitted_when_no_metrics(empty_data):
+    md = render_markdown(empty_data)
+    assert "## KPI Snapshot" not in md
+
+
+def test_render_markdown_kpi_snapshot_shows_latest_period_only(minimal_data):
+    # minimal_data has total_revenue at 2024-01-01 and 2024-02-01;
+    # snapshot should show only the Feb row.
+    md = render_markdown(minimal_data)
+    snapshot_start = md.index("## KPI Snapshot")
+    next_section = md.index("##", snapshot_start + 3)
+    snapshot_section = md[snapshot_start:next_section]
+    assert "2024-02-01" in snapshot_section
+    assert "2024-01-01" not in snapshot_section
+
+
+def test_render_markdown_kpi_snapshot_formats_value(minimal_data):
+    md = render_markdown(minimal_data)
+    snapshot_start = md.index("## KPI Snapshot")
+    next_section = md.index("##", snapshot_start + 3)
+    snapshot_section = md[snapshot_start:next_section]
+    assert "$6,150,000.00" in snapshot_section
+
+
+def test_render_html_has_kpi_snapshot_section(minimal_data):
+    html = render_html(minimal_data)
+    assert "<h2>KPI Snapshot</h2>" in html
+
+
+def test_render_html_kpi_snapshot_omitted_when_no_metrics(empty_data):
+    html = render_html(empty_data)
+    assert "<h2>KPI Snapshot</h2>" not in html
+
+
+def test_render_html_kpi_snapshot_shows_latest_period_only(minimal_data):
+    html = render_html(minimal_data)
+    snapshot_start = html.index("<h2>KPI Snapshot</h2>")
+    next_section = html.index("<h2>", snapshot_start + 5)
+    snapshot_section = html[snapshot_start:next_section]
+    assert "2024-02-01" in snapshot_section
+    assert "2024-01-01" not in snapshot_section
+
+
+def test_render_html_kpi_snapshot_formats_value(minimal_data):
+    html = render_html(minimal_data)
+    snapshot_start = html.index("<h2>KPI Snapshot</h2>")
+    next_section = html.index("<h2>", snapshot_start + 5)
+    snapshot_section = html[snapshot_start:next_section]
+    assert "$6,150,000.00" in snapshot_section
+
+
+# ── Key Insights section tests ─────────────────────────────────────────────────
+
+def test_render_markdown_has_key_insights_section_when_period_data(time_enriched_data):
+    md = render_markdown(time_enriched_data)
+    assert "## Key Insights" in md
+
+
+def test_render_markdown_omits_key_insights_when_no_period_columns(minimal_data):
+    md = render_markdown(minimal_data)
+    assert "## Key Insights" not in md
+
+
+def test_render_markdown_key_insights_shows_insight_text(time_enriched_data):
+    md = render_markdown(time_enriched_data)
+    assert "increased" in md or "decreased" in md or "remained flat" in md
+
+
+def test_render_markdown_key_insights_uses_label(time_enriched_data):
+    md = render_markdown(time_enriched_data)
+    insights_start = md.index("## Key Insights")
+    next_section = md.index("##", insights_start + 3)
+    insights_section = md[insights_start:next_section]
+    assert "Total Revenue" in insights_section
+
+
+def test_render_markdown_key_insights_omitted_when_all_nan():
+    # All period_change_pct values are NaN — no valid insights, section omitted
+    data = ReportData(
+        input_dir=Path("outputs/test"),
+        validation_status="passed",
+        validation_errors=[],
+        validation_warnings=[],
+        long_metrics=pd.DataFrame({
+            "rollup_level": ["date_only"],
+            "date": ["2024-01-01"],
+            "metric_id": ["total_revenue"],
+            "label": ["Total Revenue"],
+            "value": [5900000.0],
+            "unit": ["USD"],
+            "prior_period_value": [float("nan")],
+            "period_change": [float("nan")],
+            "period_change_pct": [float("nan")],
+        }),
+        wide_metrics=pd.DataFrame(),
+        metric_dictionary=pd.DataFrame(),
+    )
+    md = render_markdown(data)
+    assert "## Key Insights" not in md
+
+
+def test_render_html_has_key_insights_section_when_period_data(time_enriched_data):
+    html = render_html(time_enriched_data)
+    assert "<h2>Key Insights</h2>" in html
+
+
+def test_render_html_omits_key_insights_when_no_period_columns(minimal_data):
+    html = render_html(minimal_data)
+    assert "<h2>Key Insights</h2>" not in html
+
+
+def test_render_html_key_insights_uses_label(time_enriched_data):
+    html = render_html(time_enriched_data)
+    insights_start = html.index("<h2>Key Insights</h2>")
+    next_section = html.index("<h2>", insights_start + 5)
+    insights_section = html[insights_start:next_section]
+    assert "Total Revenue" in insights_section
+
+
+# ── Metric Dictionary display header tests ─────────────────────────────────────
+
+def test_render_markdown_metric_dictionary_uses_display_headers(minimal_data):
+    md = render_markdown(minimal_data)
+    dict_start = md.index("## Metric Dictionary")
+    header_row = next(
+        line for line in md[dict_start:].splitlines()
+        if line.startswith("|")
+    )
+    assert "Metric ID" in header_row
+    assert "Metric" in header_row
+    assert "Type" in header_row
+    assert "Unit" in header_row
+    assert "Description" in header_row
+    assert "| id |" not in header_row
+    assert "| label |" not in header_row
+    assert "| type |" not in header_row
+
+
+def test_render_html_metric_dictionary_uses_display_headers(minimal_data):
+    html = render_html(minimal_data)
+    dict_start = html.index("<h2>Metric Dictionary</h2>")
+    header_end = html.index("</thead>", dict_start)
+    dict_header = html[dict_start:header_end]
+    assert "<th>Metric ID</th>" in dict_header
+    assert "<th>Metric</th>" in dict_header
+    assert "<th>Type</th>" in dict_header
+    assert "<th>Unit</th>" in dict_header
+    assert "<th>Description</th>" in dict_header
+    assert "<th>id</th>" not in dict_header
+    assert "<th>label</th>" not in dict_header
+    assert "<th>type</th>" not in dict_header
