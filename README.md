@@ -2,9 +2,9 @@
 
 A modular analytics engineering portfolio focused on turning raw data into decision-ready intelligence.
 
-This repository documents my progression from analyst workflows to reusable analytics systems — combining data ingestion, metric governance, reporting automation, BI workflows, and AI-ready data foundations.
+This repository documents my progression from analyst workflows to reusable analytics systems — combining data ingestion, metric governance, reporting automation, and AI-assisted development workflows.
 
-The core principle behind this repo is:
+The core principle:
 
 ```
 Clean data → Trusted metrics → Visuals anywhere
@@ -12,24 +12,15 @@ Clean data → Trusted metrics → Visuals anywhere
 
 ---
 
-## Repository Structure
-
-```
-financial-data-analytics/
-├── intake_engine/        # Raw/messy data → clean analytics-ready data
-├── metrics_engine/       # Clean data → trusted reusable KPI outputs
-├── report_engine/        # Trusted metrics → client-ready reports
-├── ai_workflows/         # Reusable AI workflow instructions for coding assistants
-├── archive/              # Historical Excel, SQL, and learning projects
-├── CLAUDE.md             # Repo-level AI coding assistant guidance
-└── README.md
-```
-
----
-
 ## Active Product Stack
 
-This repo is organized around a three-engine analytics workflow:
+| Engine | Version | Input | Output |
+|---|---|---|---|
+| **Intake Engine** | v1.x | Raw CSV / XLSX (messy, unstructured) | Clean CSV, HTML quality report, validation JSON, profiling JSON |
+| **Metrics Engine** | v1.1 | Clean CSV | Long + wide KPI tables, metric dictionary, validation report, Excel workbook |
+| **Report Engine** | v1.2 | Metrics Engine output directory | Markdown + HTML reports, summary JSON, insights JSON |
+
+Each engine is a standalone Python CLI package with tests, documented outputs, and a clearly scoped role in the pipeline.
 
 ```
 Intake Engine
@@ -37,33 +28,106 @@ Intake Engine
 Metrics Engine
     ↓
 Report Engine
+    ↓
+Power BI / Excel / dashboards
 ```
 
-Each engine is a standalone Python CLI package with tests, documented outputs, and a clear role in the pipeline.
+---
+
+## End-to-End Demo Workflow
+
+The following commands run the full pipeline on the sample data center dataset.
+
+### Sample dataset
+
+**Raw input:** `intake_engine/tests/fixtures/messy_data_center_sample_for_intake.csv`
+
+A realistic messy export: inconsistent headers (`Report Date`, `Total Revenue ($)`, `Geo`, `Vendor`), extra non-metric columns, and formatting in numeric fields. The pipeline cleans, validates, calculates KPIs, and produces client-ready report artifacts.
+
+### Step 1 — Intake Engine
+
+```bash
+cd intake_engine
+intake run tests/fixtures/messy_data_center_sample_for_intake.csv --profile --validate
+cd ..
+```
+
+Outputs to `intake_engine/outputs/`:
+- `messy_data_center_sample_for_intake_clean.csv` — cleaned, schema-normalized data
+- `messy_data_center_sample_for_intake_report.html` — self-contained HTML quality report
+- `messy_data_center_sample_for_intake_validation.json` — validation result (PASS / WARN / FAIL)
+- `messy_data_center_sample_for_intake_profile.json` — semantic type inference and transformation log
+
+### Step 2 — Metrics Engine (with prior-period analysis)
+
+```bash
+cd metrics_engine
+metrics-engine run \
+  --input ../intake_engine/outputs/messy_data_center_sample_for_intake_clean.csv \
+  --output outputs/demo \
+  --with-time
+cd ..
+```
+
+Outputs to `metrics_engine/outputs/demo/`:
+- `long_metrics.csv` — one row per metric per rollup level, with `prior_period_value`, `period_change`, and `period_change_pct` columns
+- `wide_metrics.csv` — one row per date+segment, metrics as columns
+- `metric_dictionary.csv` — definitions, units, and descriptions for all 6 KPIs
+- `validation_report.json` — full validation status, errors, and warnings
+- `metrics_output.xlsx` — all outputs in a single Excel workbook
+
+### Step 3 — Report Engine, full report
+
+```bash
+cd report_engine
+report-engine build \
+  --input ../metrics_engine/outputs/demo \
+  --output outputs/demo_full_report
+```
+
+Outputs to `report_engine/outputs/demo_full_report/`:
+- `report.md` — full Markdown report with all six sections
+- `report.html` — self-contained HTML report with inline CSS
+- `summary.json` — machine-readable summary (validation status, metric count, date range, template name)
+- `insights.json` — deterministic period-over-period insight records
+
+### Step 4 — Report Engine, executive summary
+
+```bash
+report-engine build \
+  --input ../metrics_engine/outputs/demo \
+  --output outputs/demo_executive_summary \
+  --template executive_summary
+cd ..
+```
+
+Outputs a compact report containing Header, Validation, KPI Snapshot, and Key Insights only — no raw data tables.
 
 ---
 
 ## Intake Engine
 
-A modular Python CLI ingestion tool that converts messy CSV, TSV, and Excel files into clean, analytics-ready outputs.
+A modular Python CLI ingestion tool that converts messy CSV and XLSX files into clean, analytics-ready outputs.
 
 ### Purpose
 
 The Intake Engine solves the first problem in most analytics workflows: messy source files.
 
-It helps standardize raw data before it reaches dashboards, metric layers, reports, or downstream analysis.
+It handles delimiter detection, header normalization, numeric and date cleaning, validation, profiling, and HTML quality reports — all from a single command.
 
 ### Key Features
 
-- CSV, TSV, and Excel ingestion
-- Delimiter auto-detection
-- Multi-sheet Excel support
-- Data cleaning and normalization
-- Validation and profiling
-- HTML quality reports
-- DuckDB loading and append mode
-- YAML-based configuration
+- CSV, TSV, and Excel ingestion with auto-detected delimiters
+- Header normalization (trim, lowercase, snake_case)
+- Numeric normalization — strips `$`, `,`, `%`, parenthetical negatives
+- Date normalization — standardizes 12+ date formats to ISO 8601
+- Validation — required columns, null rates, duplicate rates, type rules
+- Profiling — semantic type inference and transformation tracking
+- Self-contained HTML quality reports
+- Parquet export
+- DuckDB sink (append or replace)
 - Batch processing
+- YAML-driven pipeline config
 - CLI workflow
 - Test coverage
 
@@ -71,12 +135,6 @@ It helps standardize raw data before it reaches dashboards, metric layers, repor
 
 ```bash
 cd intake_engine
-pip install -e .
-```
-
-For development (includes test runner):
-
-```bash
 pip install -e ".[dev]"
 ```
 
@@ -90,7 +148,7 @@ intake --help
 
 ## Metrics Engine
 
-A config-driven KPI calculation engine that turns cleaned data into validated, reusable metric outputs for Power BI, Excel, reporting tools, and future AI analytics workflows.
+A config-driven KPI calculation engine that turns cleaned data into validated, reusable metric outputs.
 
 ### Purpose
 
@@ -104,12 +162,13 @@ Instead of calculating KPIs separately in dashboards, spreadsheets, and reports,
 - Schema-driven column normalization
 - YAML-based metric definitions
 - Validation before calculation
-- Configurable segment rollups
-- Sum-before-divide KPI logic
+- Configurable segment rollups (date, date+region, date+provider, date+region+provider)
+- Sum-before-divide KPI logic (prevents weighted-average distortion)
 - Long and wide metric outputs
 - Metric dictionary generation
 - Validation report export
-- Prior-period time analysis
+- Excel workbook export
+- Prior-period time analysis (`--with-time`)
 - CLI workflow
 - Test coverage
 
@@ -117,12 +176,6 @@ Instead of calculating KPIs separately in dashboards, spreadsheets, and reports,
 
 ```bash
 cd metrics_engine
-pip install -e .
-```
-
-For development (includes test runner):
-
-```bash
 pip install -e ".[dev]"
 ```
 
@@ -150,16 +203,23 @@ A lightweight reporting engine that converts trusted Metrics Engine outputs into
 
 ### Purpose
 
-The Report Engine is the reporting layer of the stack.
+The Report Engine is the final layer of the stack.
 
-It takes validated metric outputs and turns them into structured deliverables that can support client handoff, portfolio demos, executive summaries, and future reporting automation.
+It takes validated metric outputs and turns them into structured deliverables that support client handoff, portfolio demos, executive summaries, and reporting automation.
 
 ### Key Features
 
-- Reads Metrics Engine outputs
-- Generates Markdown and HTML reports
-- Produces a machine-readable summary JSON
-- Keeps reporting logic separate from metric logic
+- Reads Metrics Engine output directory
+- Built-in report templates (`full_report`, `executive_summary`, `metrics_detail`)
+- `--template` CLI flag to select the report scope
+- KPI Snapshot — latest value per metric, most recent period only
+- Key Insights — deterministic, data-grounded period-over-period bullets
+- Metrics Summary — formatted long-format table with optional period-over-period columns
+- Metric Dictionary — client-friendly column headers
+- Self-contained HTML report with inline CSS
+- Markdown report
+- `summary.json` — machine-readable metadata including selected template name
+- `insights.json` — structured insight records per metric
 - CLI workflow
 - Test coverage
 
@@ -167,50 +227,33 @@ It takes validated metric outputs and turns them into structured deliverables th
 
 ```bash
 cd report_engine
-pip install -e .
-```
-
-For development (includes test runner):
-
-```bash
 pip install -e ".[dev]"
 ```
 
 ### CLI
 
 ```bash
-report-engine --help
+report-engine build --input <metrics_output_dir> --output <output_dir> [--template full_report|executive_summary|metrics_detail]
 ```
+
+### Templates
+
+| Template | Sections |
+|---|---|
+| `full_report` (default) | Header, Validation, KPI Snapshot, Key Insights, Metrics Summary, Metric Dictionary |
+| `executive_summary` | Header, Validation, KPI Snapshot, Key Insights |
+| `metrics_detail` | Header, Validation, Metrics Summary, Metric Dictionary |
+
+`summary.json` and `insights.json` are always written regardless of selected template.
 
 ### Example Outputs
 
 | File | Description |
 |---|---|
-| `report.md` | Markdown report with validation, metrics summary, and metric dictionary |
+| `report.md` | Markdown report with selected template sections |
 | `report.html` | Self-contained HTML report with inline CSS |
-| `summary.json` | Machine-readable summary: status, metric count, date range |
-
----
-
-## End-to-End Workflow
-
-```
-Raw CSV / Excel files
-        ↓
-  Intake Engine          (raw → clean)
-        ↓
-Cleaned analytics-ready data
-        ↓
-  Metrics Engine         (clean → trusted KPIs)
-        ↓
-Trusted KPI outputs
-        ↓
-  Report Engine          (metrics → client artifacts)
-        ↓
-Client-ready report artifacts
-        ↓
-Power BI / Excel / dashboards / AI analytics workflows
-```
+| `summary.json` | Machine-readable summary: status, metric count, date range, template name |
+| `insights.json` | Deterministic period-over-period insight records |
 
 ---
 
@@ -218,9 +261,7 @@ Power BI / Excel / dashboards / AI analytics workflows
 
 The `ai_workflows/` folder contains reusable workflow instructions for AI coding assistants.
 
-These workflows help keep future development consistent, modular, and scoped.
-
-Current workflow skills:
+These workflows keep development consistent, modular, and scoped to the active engine stack.
 
 | Skill | Purpose |
 |---|---|
@@ -232,15 +273,13 @@ Current workflow skills:
 | `documentation_update` | Keep docs accurate and portfolio-ready |
 | `scope_discipline` | Prevent overbuilding and premature architecture |
 
-These are used alongside `CLAUDE.md` to guide development and reduce repeated prompting.
-
 ---
 
 ## Archive
 
 The `archive/` folder contains earlier Excel and SQL projects.
 
-These are preserved for portfolio history and learning progression, but are not part of the active analytics engine stack.
+These are preserved for portfolio history and learning progression but are not part of the active engine stack.
 
 Active development is focused on `intake_engine/`, `metrics_engine/`, `report_engine/`, and `ai_workflows/`.
 
@@ -250,19 +289,16 @@ Active development is focused on `intake_engine/`, `metrics_engine/`, `report_en
 
 ### Completed
 
-- **Intake Engine** — clean messy source files and generate analytics-ready outputs
-- **Metrics Engine** — create reusable, validated KPI outputs from cleaned data
-- **Report Engine** — generate structured report artifacts from trusted metric outputs
+- **Intake Engine** — ingest and clean messy CSV / XLSX files; validate, profile, and export clean analytics-ready data
+- **Metrics Engine v1.1** — YAML-driven KPI calculation across configurable rollup levels; prior-period time analysis with `--with-time`
+- **Report Engine v1.2** — client-ready Markdown and HTML reports; KPI Snapshot; deterministic Key Insights; three built-in templates (`full_report`, `executive_summary`, `metrics_detail`); `insights.json`
+- **End-to-End Pipeline** — full Intake → Metrics → Report workflow running on a shared sample dataset
 
 ### Next Priorities
 
-**End-to-End Demo Workflow** — a polished walkthrough showing messy input → cleaned data → trusted metrics → client-ready report
+**Visual Layer** — reusable Power BI dashboards or lightweight Python charts that consume trusted Metrics Engine outputs directly
 
-**Report Quality** — number formatting, metric grouping, and period-over-period display in generated reports
-
-**Visual Layer** — reusable Power BI dashboards or lightweight visualizations that consume trusted Metrics Engine data
-
-**AI-Ready Analytics Layer** — future work may include natural-language analytics interfaces, semantic layers, and workflow automation on top of trusted data
+**PDF Export** — optional PDF generation from Report Engine's existing HTML output, for direct client delivery
 
 ---
 

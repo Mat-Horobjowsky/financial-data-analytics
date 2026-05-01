@@ -51,3 +51,5 @@ archive/excel/Electricity_Model.xlsx
 archive/sql/coffee-king-project/
 
 archive/data_center_agent/
+
+.claude/settings.local.json
