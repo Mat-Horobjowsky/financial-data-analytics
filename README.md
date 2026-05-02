@@ -20,6 +20,7 @@ Clean data → Trusted metrics → Visuals anywhere
 | **Metrics Engine** | v1.1 | Clean CSV | Long + wide KPI tables, metric dictionary, validation report, Excel workbook |
 | **Report Engine** | v1.2 | Metrics Engine output directory | Markdown + HTML reports, summary JSON, insights JSON |
 | **Analytics Pipeline** | v0.1 | Raw CSV / XLSX | All engine outputs + `pipeline_summary.json` |
+| **Analytics Store** | v0.1 | Metrics Engine output + Report Engine output (optional) | DuckDB database — 6 tables, 3 views |
 
 Each engine is a standalone Python CLI package with tests, documented outputs, and a clearly scoped role in the pipeline.
 
@@ -306,6 +307,53 @@ analytics-pipeline run \
 
 ---
 
+## Analytics Store
+
+A DuckDB-backed analytics store that consolidates Metrics Engine and Report Engine outputs into a queryable database.
+
+### Purpose
+
+The Analytics Store loads trusted metric and report outputs into named DuckDB tables and views, ready for Power BI, visual layers, or future analytics tools — without re-reading CSVs or rebuilding logic downstream.
+
+### Setup
+
+```bash
+cd analytics_store && pip install -e ".[dev]"
+```
+
+### CLI
+
+```bash
+analytics-store build \
+  --metrics <metrics_output_dir> \
+  --report <report_output_dir> \
+  --output outputs/store.duckdb
+```
+
+| Flag | Default | Description |
+|---|---|---|
+| `--metrics` | *(required)* | Metrics Engine output directory |
+| `--report` | *(none)* | Report Engine output directory (optional) |
+| `--output` | `outputs/store.duckdb` | Output DuckDB file path |
+
+`--report` is optional. If omitted, `report_insights` and `report_summary` are created empty.
+
+### Tables and Views
+
+| Name | Type | Description |
+|---|---|---|
+| `long_metrics` | Table | One row per metric per rollup level |
+| `wide_metrics` | Table | One row per date+segment with metrics as columns |
+| `metric_dictionary` | Table | Metric definitions, units, and descriptions |
+| `metrics_validation_summary` | Table | Validation status, error count, warning count |
+| `report_insights` | Table | Period-over-period insight records (empty if no `--report`) |
+| `report_summary` | Table | Report metadata: template, date range, metric count (empty if no `--report`) |
+| `v_latest_kpis` | View | Most recent value per metric at `date_only` rollup level |
+| `v_metric_trends` | View | All `date_only` rows ordered by metric and date |
+| `v_report_insights` | View | All rows from `report_insights` |
+
+---
+
 ## AI Workflows
 
 The `ai_workflows/` folder contains reusable workflow instructions for AI coding assistants.
@@ -330,7 +378,7 @@ The `archive/` folder contains earlier Excel and SQL projects.
 
 These are preserved for portfolio history and learning progression but are not part of the active engine stack.
 
-Active development is focused on `intake_engine/`, `metrics_engine/`, `report_engine/`, and `ai_workflows/`.
+Active development is focused on `intake_engine/`, `metrics_engine/`, `report_engine/`, `analytics_pipeline/`, `analytics_store/`, and `ai_workflows/`.
 
 ---
 
@@ -342,6 +390,7 @@ Active development is focused on `intake_engine/`, `metrics_engine/`, `report_en
 - **Metrics Engine v1.1** — YAML-driven KPI calculation across configurable rollup levels; prior-period time analysis with `--with-time`
 - **Report Engine v1.2** — client-ready Markdown and HTML reports; KPI Snapshot; deterministic Key Insights; three built-in templates (`full_report`, `executive_summary`, `metrics_detail`); `insights.json`
 - **Analytics Pipeline v0.1** — single-command orchestrator running all three engines in sequence; stops on first failure; writes `pipeline_summary.json`
+- **Analytics Store v0.1** — DuckDB analytics store for Metrics Engine and Report Engine outputs; 6 tables, 3 views; `--report` is optional; standalone CLI
 - **End-to-End Pipeline** — full Intake → Metrics → Report workflow running on a shared sample dataset
 
 ### Next Priorities
