@@ -19,6 +19,7 @@ Clean data → Trusted metrics → Visuals anywhere
 | **Intake Engine** | v1.x | Raw CSV / XLSX (messy, unstructured) | Clean CSV, HTML quality report, validation JSON, profiling JSON |
 | **Metrics Engine** | v1.1 | Clean CSV | Long + wide KPI tables, metric dictionary, validation report, Excel workbook |
 | **Report Engine** | v1.2 | Metrics Engine output directory | Markdown + HTML reports, summary JSON, insights JSON |
+| **Analytics Pipeline** | v0.1 | Raw CSV / XLSX | All engine outputs + `pipeline_summary.json` |
 
 Each engine is a standalone Python CLI package with tests, documented outputs, and a clearly scoped role in the pipeline.
 
@@ -257,6 +258,54 @@ report-engine build --input <metrics_output_dir> --output <output_dir> [--templa
 
 ---
 
+## Analytics Pipeline
+
+A stage-based orchestrator that runs all three engines in sequence from a single command.
+
+### Purpose
+
+The Analytics Pipeline removes the need to run Intake, Metrics, and Report as separate steps. One command drives the full workflow, stops at the first failed stage, and produces a `pipeline_summary.json` recording the status and output files for every stage.
+
+### Setup
+
+All three engines must be installed first:
+
+```bash
+cd intake_engine && pip install -e . && cd ..
+cd metrics_engine && pip install -e . && cd ..
+cd report_engine && pip install -e . && cd ..
+cd analytics_pipeline && pip install -e ".[dev]"
+```
+
+### CLI
+
+```bash
+analytics-pipeline run \
+  --input <raw_input.csv> \
+  --output outputs/demo \
+  --with-time \
+  --template full_report
+```
+
+| Flag | Default | Description |
+|---|---|---|
+| `--input` | *(required)* | Raw input file (CSV or XLSX) |
+| `--output` | `outputs/pipeline` | Pipeline output root directory |
+| `--with-time` | off | Enable prior-period time analysis in Metrics Engine |
+| `--template` | `full_report` | Report template (`full_report`, `executive_summary`, `metrics_detail`) |
+
+### Output Structure
+
+```
+<output>/
+├── intake/     # Clean CSV, HTML quality report, validation JSON
+├── metrics/    # Long/wide metrics, metric dictionary, validation report, Excel workbook
+├── report/     # report.html, report.md, summary.json, insights.json
+└── pipeline_summary.json
+```
+
+---
+
 ## AI Workflows
 
 The `ai_workflows/` folder contains reusable workflow instructions for AI coding assistants.
@@ -292,6 +341,7 @@ Active development is focused on `intake_engine/`, `metrics_engine/`, `report_en
 - **Intake Engine** — ingest and clean messy CSV / XLSX files; validate, profile, and export clean analytics-ready data
 - **Metrics Engine v1.1** — YAML-driven KPI calculation across configurable rollup levels; prior-period time analysis with `--with-time`
 - **Report Engine v1.2** — client-ready Markdown and HTML reports; KPI Snapshot; deterministic Key Insights; three built-in templates (`full_report`, `executive_summary`, `metrics_detail`); `insights.json`
+- **Analytics Pipeline v0.1** — single-command orchestrator running all three engines in sequence; stops on first failure; writes `pipeline_summary.json`
 - **End-to-End Pipeline** — full Intake → Metrics → Report workflow running on a shared sample dataset
 
 ### Next Priorities
