@@ -4,7 +4,7 @@ import dataclasses
 import subprocess
 from pathlib import Path
 
-from .stages import ACTIVE_STAGES, StageContext, StageResult
+from .stages import ACTIVE_STAGES, StageContext, StageResult, build_store_cmd
 
 
 def run_stage(name: str, cmd: list[str], output_dir: Path) -> StageResult:
@@ -36,4 +36,11 @@ def run_pipeline(ctx: StageContext) -> dict[str, StageResult]:
         ctx = dataclasses.replace(ctx, results=results)
         if result.status == "failed":
             break
+
+    if ctx.with_store and "report" in results and results["report"].status == "success":
+        store_dir = ctx.output_root / "store"
+        store_result = run_stage("store", build_store_cmd(ctx), store_dir)
+        store_result.extra["output_path"] = str(store_dir / "analytics.duckdb")
+        results["store"] = store_result
+
     return results

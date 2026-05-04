@@ -9,13 +9,14 @@ from analytics_pipeline.stages import StageContext, StageResult
 from analytics_pipeline.summary import build_pipeline_summary, write_summary
 
 
-def _ctx(tmp_path, with_time=False, template="full_report"):
+def _ctx(tmp_path, with_time=False, template="full_report", with_store=False):
     return StageContext(
         input_file=tmp_path / "data.csv",
         output_root=tmp_path / "out",
         with_time=with_time,
         template=template,
         results={},
+        with_store=with_store,
     )
 
 
@@ -178,3 +179,51 @@ def test_write_summary_returns_path(tmp_path):
     path = write_summary({}, tmp_path / "out")
     assert isinstance(path, Path)
     assert path.name == "pipeline_summary.json"
+
+
+# --- with_store in summary ---
+
+
+def test_summary_has_with_store_false_by_default(tmp_path):
+    ctx = _ctx(tmp_path)
+    s = build_pipeline_summary(ctx, _all_success_results())
+    assert s["with_store"] is False
+
+
+def test_summary_has_with_store_true_when_set(tmp_path):
+    ctx = _ctx(tmp_path, with_store=True)
+    store_result = _result("store")
+    results = {**_all_success_results(), "store": store_result}
+    s = build_pipeline_summary(ctx, results)
+    assert s["with_store"] is True
+
+
+def test_summary_store_not_in_stages_when_without_store(tmp_path):
+    ctx = _ctx(tmp_path, with_store=False)
+    s = build_pipeline_summary(ctx, _all_success_results())
+    assert "store" not in s["stages"]
+
+
+def test_summary_store_in_stages_when_with_store_and_ran(tmp_path):
+    ctx = _ctx(tmp_path, with_store=True)
+    store_result = _result("store")
+    results = {**_all_success_results(), "store": store_result}
+    s = build_pipeline_summary(ctx, results)
+    assert "store" in s["stages"]
+    assert s["stages"]["store"]["status"] == "success"
+
+
+def test_summary_store_skipped_when_with_store_but_not_in_results(tmp_path):
+    ctx = _ctx(tmp_path, with_store=True)
+    partial = {"intake": _result("intake", status="failed")}
+    s = build_pipeline_summary(ctx, partial)
+    assert s["stages"]["store"]["status"] == "skipped"
+
+
+def test_summary_future_stages_excludes_store_when_with_store(tmp_path):
+    ctx = _ctx(tmp_path, with_store=True)
+    store_result = _result("store")
+    results = {**_all_success_results(), "store": store_result}
+    s = build_pipeline_summary(ctx, results)
+    assert "store" not in s["future_stages"]
+    assert "visuals" in s["future_stages"]

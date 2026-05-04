@@ -10,6 +10,8 @@ from .stages import ACTIVE_STAGES, FUTURE_STAGES, StageContext, StageResult
 
 def build_pipeline_summary(ctx: StageContext, results: dict[str, StageResult]) -> dict:
     all_names = [name for name, _ in ACTIVE_STAGES]
+    if ctx.with_store:
+        all_names.append("store")
     overall = (
         "success"
         if results and all(r.status == "success" for r in results.values())
@@ -28,16 +30,18 @@ def build_pipeline_summary(ctx: StageContext, results: dict[str, StageResult]) -
             }
         else:
             stages_out[name] = {"status": "skipped"}
+    future_stages = [s for s in FUTURE_STAGES if s != "store"] if ctx.with_store else FUTURE_STAGES
     return {
         "pipeline_version": __version__,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "input_path": str(ctx.input_file),
         "output_dir": str(ctx.output_root),
         "with_time": ctx.with_time,
+        "with_store": ctx.with_store,
         "template": ctx.template,
         "status": overall,
         "stages": stages_out,
-        "future_stages": FUTURE_STAGES,
+        "future_stages": future_stages,
     }
 
 

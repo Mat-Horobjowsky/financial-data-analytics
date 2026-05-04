@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "analytics_pipeline"
-version = "0.1.0"
+version = "0.2.0"
 description = "Stage-based orchestrator for the Intake → Metrics → Report pipeline"
 readme = "README.md"
 requires-python = ">=3.11"

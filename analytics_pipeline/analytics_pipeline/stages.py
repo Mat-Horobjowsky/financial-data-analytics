@@ -26,6 +26,7 @@ class StageContext:
     with_time: bool
     template: str
     results: dict[str, StageResult]
+    with_store: bool = False
 
 
 def build_intake_cmd(ctx: StageContext) -> list[str]:
@@ -77,6 +78,21 @@ def build_report_cmd(ctx: StageContext) -> list[str]:
         str(ctx.output_root / "report"),
         "--template",
         ctx.template,
+    ]
+
+
+def build_store_cmd(ctx: StageContext) -> list[str]:
+    return [
+        sys.executable,
+        "-m",
+        "analytics_store.cli",
+        "build",
+        "--metrics",
+        str(ctx.output_root / "metrics"),
+        "--report",
+        str(ctx.output_root / "report"),
+        "--output",
+        str(ctx.output_root / "store" / "analytics.duckdb"),
     ]
 
 

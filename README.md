@@ -19,7 +19,7 @@ Clean data → Trusted metrics → Visuals anywhere
 | **Intake Engine** | v1.x | Raw CSV / XLSX (messy, unstructured) | Clean CSV, HTML quality report, validation JSON, profiling JSON |
 | **Metrics Engine** | v1.1 | Clean CSV | Long + wide KPI tables, metric dictionary, validation report, Excel workbook |
 | **Report Engine** | v1.2 | Metrics Engine output directory | Markdown + HTML reports, summary JSON, insights JSON |
-| **Analytics Pipeline** | v0.1 | Raw CSV / XLSX | All engine outputs + `pipeline_summary.json` |
+| **Analytics Pipeline** | v0.2 | Raw CSV / XLSX | All engine outputs + `pipeline_summary.json`; optional Analytics Store stage via `--with-store` |
 | **Analytics Store** | v0.1 | Metrics Engine output + Report Engine output (optional) | DuckDB database — 6 tables, 3 views |
 
 Each engine is a standalone Python CLI package with tests, documented outputs, and a clearly scoped role in the pipeline.
@@ -31,7 +31,9 @@ Metrics Engine
     ↓
 Report Engine
     ↓
-Power BI / Excel / dashboards
+Analytics Store     (--with-store)
+    ↓
+Visuals             (planned)
 ```
 
 ---
@@ -285,7 +287,8 @@ analytics-pipeline run \
   --input <raw_input.csv> \
   --output outputs/demo \
   --with-time \
-  --template full_report
+  --template full_report \
+  --with-store
 ```
 
 | Flag | Default | Description |
@@ -294,6 +297,7 @@ analytics-pipeline run \
 | `--output` | `outputs/pipeline` | Pipeline output root directory |
 | `--with-time` | off | Enable prior-period time analysis in Metrics Engine |
 | `--template` | `full_report` | Report template (`full_report`, `executive_summary`, `metrics_detail`) |
+| `--with-store` | off | Run Analytics Store stage after report; creates `store/analytics.duckdb` |
 
 ### Output Structure
 
@@ -302,6 +306,7 @@ analytics-pipeline run \
 ├── intake/     # Clean CSV, HTML quality report, validation JSON
 ├── metrics/    # Long/wide metrics, metric dictionary, validation report, Excel workbook
 ├── report/     # report.html, report.md, summary.json, insights.json
+├── store/      # analytics.duckdb — only created when --with-store is passed
 └── pipeline_summary.json
 ```
 
@@ -391,11 +396,12 @@ Active development is focused on `intake_engine/`, `metrics_engine/`, `report_en
 - **Report Engine v1.2** — client-ready Markdown and HTML reports; KPI Snapshot; deterministic Key Insights; three built-in templates (`full_report`, `executive_summary`, `metrics_detail`); `insights.json`
 - **Analytics Pipeline v0.1** — single-command orchestrator running all three engines in sequence; stops on first failure; writes `pipeline_summary.json`
 - **Analytics Store v0.1** — DuckDB analytics store for Metrics Engine and Report Engine outputs; 6 tables, 3 views; `--report` is optional; standalone CLI
-- **End-to-End Pipeline** — full Intake → Metrics → Report workflow running on a shared sample dataset
+- **Analytics Pipeline v0.2** — optional `--with-store` flag adds Analytics Store as a fourth stage; `pipeline_summary.json` gains `with_store` field; `future_stages` now shows only `["visuals"]` when store is enabled
+- **End-to-End Pipeline** — full Intake → Metrics → Report → Store workflow running on a shared sample dataset
 
 ### Next Priorities
 
-**Visual Layer** — reusable Power BI dashboards or lightweight Python charts that consume trusted Metrics Engine outputs directly
+**Visual Layer** — reusable Power BI dashboards or lightweight Python charts that consume `analytics.duckdb` directly; the remaining entry in `future_stages`
 
 **PDF Export** — optional PDF generation from Report Engine's existing HTML output, for direct client delivery
 

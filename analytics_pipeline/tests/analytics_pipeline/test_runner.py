@@ -8,13 +8,14 @@ from analytics_pipeline.runner import run_pipeline, run_stage
 from analytics_pipeline.stages import ACTIVE_STAGES, StageContext, StageResult
 
 
-def _ctx(tmp_path, with_time=False, template="full_report"):
+def _ctx(tmp_path, with_time=False, template="full_report", with_store=False):
     return StageContext(
         input_file=tmp_path / "data.csv",
         output_root=tmp_path / "out",
         with_time=with_time,
         template=template,
         results={},
+        with_store=with_store,
     )
 
 
@@ -160,3 +161,50 @@ def test_run_pipeline_all_success_statuses(tmp_path):
          patch("analytics_pipeline.runner.ACTIVE_STAGES", _make_success_stages()):
         results = run_pipeline(ctx)
     assert all(r.status == "success" for r in results.values())
+
+
+# --- store stage (optional) ---
+
+
+def test_run_pipeline_skips_store_when_with_store_false(tmp_path):
+    ctx = _ctx(tmp_path, with_store=False)
+    with patch("analytics_pipeline.runner.subprocess.run", return_value=_mock_proc(0)), \
+         patch("analytics_pipeline.runner.ACTIVE_STAGES", _make_success_stages()):
+        results = run_pipeline(ctx)
+    assert "store" not in results
+
+
+def test_run_pipeline_runs_store_when_with_store_true(tmp_path):
+    ctx = _ctx(tmp_path, with_store=True)
+    with patch("analytics_pipeline.runner.subprocess.run", return_value=_mock_proc(0)), \
+         patch("analytics_pipeline.runner.ACTIVE_STAGES", _make_success_stages()):
+        results = run_pipeline(ctx)
+    assert "store" in results
+    assert results["store"].status == "success"
+
+
+def test_run_pipeline_store_not_run_if_report_failed(tmp_path):
+    ctx = _ctx(tmp_path, with_store=True)
+    call_count = [0]
+
+    def _side_effect(cmd, **kwargs):
+        call_count[0] += 1
+        if call_count[0] == 3:
+            return _mock_proc(1, "report failed")
+        return _mock_proc(0)
+
+    with patch("analytics_pipeline.runner.subprocess.run", side_effect=_side_effect), \
+         patch("analytics_pipeline.runner.ACTIVE_STAGES", _make_success_stages()):
+        results = run_pipeline(ctx)
+
+    assert results["report"].status == "failed"
+    assert "store" not in results
+
+
+def test_run_pipeline_store_extra_has_output_path(tmp_path):
+    ctx = _ctx(tmp_path, with_store=True)
+    with patch("analytics_pipeline.runner.subprocess.run", return_value=_mock_proc(0)), \
+         patch("analytics_pipeline.runner.ACTIVE_STAGES", _make_success_stages()):
+        results = run_pipeline(ctx)
+    assert "output_path" in results["store"].extra
+    assert results["store"].extra["output_path"].endswith("analytics.duckdb")

@@ -23,6 +23,7 @@ def cmd_run(args) -> None:
         with_time=args.with_time,
         template=args.template,
         results={},
+        with_store=args.with_store,
     )
 
     results = run_pipeline(ctx)
@@ -65,6 +66,12 @@ def main() -> None:
         default=DEFAULT_TEMPLATE,
         choices=VALID_TEMPLATES,
         help=f"Report template (default: {DEFAULT_TEMPLATE})",
+    )
+    run_p.add_argument(
+        "--with-store",
+        dest="with_store",
+        action="store_true",
+        help="Run the analytics_store stage after report (creates store/analytics.duckdb)",
     )
 
     args = parser.parse_args()

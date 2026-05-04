@@ -1,18 +1,28 @@
-# analytics_pipeline v0.1
+# analytics_pipeline v0.2
 
-Stage-based orchestrator for the Intake → Metrics → Report pipeline.
+Stage-based orchestrator for the Intake → Metrics → Report → Store pipeline.
 
-Runs all three engines in sequence from a single command. Stops at the first failed stage and writes a `pipeline_summary.json` recording the status, command, and generated files for every stage.
+Runs the core three engines in sequence from a single command, with an optional Analytics Store stage (`--with-store`). Stops at the first failed stage and writes a `pipeline_summary.json` recording the status, command, and generated files for every stage.
 
 ## Usage
 
 ```bash
 cd analytics_pipeline
+
+# Core pipeline (Intake → Metrics → Report)
 analytics-pipeline run \
   --input ../intake_engine/tests/fixtures/messy_data_center_sample_for_intake.csv \
   --output outputs/demo \
   --with-time \
   --template full_report
+
+# With Analytics Store stage
+analytics-pipeline run \
+  --input ../intake_engine/tests/fixtures/messy_data_center_sample_for_intake.csv \
+  --output outputs/demo \
+  --with-time \
+  --template full_report \
+  --with-store
 ```
 
 ## CLI flags
@@ -23,6 +33,7 @@ analytics-pipeline run \
 | `--output` | `outputs/pipeline` | Pipeline output root directory |
 | `--with-time` | off | Enable prior-period time analysis in Metrics Engine |
 | `--template` | `full_report` | Report template (`full_report`, `executive_summary`, `metrics_detail`) |
+| `--with-store` | off | Run Analytics Store stage after report; creates `store/analytics.duckdb` |
 
 ## Output structure
 
@@ -31,18 +42,23 @@ analytics-pipeline run \
 ├── intake/          # Intake Engine outputs (clean CSV, validation JSON, ...)
 ├── metrics/         # Metrics Engine outputs (long/wide metrics, metric dictionary, ...)
 ├── report/          # Report Engine outputs (report.html, report.md, insights.json, ...)
+├── store/           # Analytics Store output — only created when --with-store is passed
+│   └── analytics.duckdb
 └── pipeline_summary.json
 ```
 
 ### pipeline_summary.json
 
+Without `--with-store`:
+
 ```json
 {
-  "pipeline_version": "0.1.0",
+  "pipeline_version": "0.2.0",
   "generated_at": "...",
   "input_path": "...",
   "output_dir": "...",
   "with_time": true,
+  "with_store": false,
   "template": "full_report",
   "status": "success",
   "stages": {
@@ -54,14 +70,34 @@ analytics-pipeline run \
 }
 ```
 
+With `--with-store`:
+
+```json
+{
+  "pipeline_version": "0.2.0",
+  "with_time": true,
+  "with_store": true,
+  "template": "full_report",
+  "status": "success",
+  "stages": {
+    "intake":  {"status": "success", ...},
+    "metrics": {"status": "success", ...},
+    "report":  {"status": "success", ..., "template": "full_report"},
+    "store":   {"status": "success", "output_dir": ".../store", "generated_files": ["analytics.duckdb"], "output_path": ".../store/analytics.duckdb"}
+  },
+  "future_stages": ["visuals"]
+}
+```
+
 ## Prerequisites
 
-All three engines must be installed before running the pipeline:
+The three core engines must be installed before running the pipeline. If you intend to use `--with-store`, install `analytics_store` as well:
 
 ```bash
 cd intake_engine && pip install -e . && cd ..
 cd metrics_engine && pip install -e . && cd ..
 cd report_engine && pip install -e . && cd ..
+cd analytics_store && pip install -e . && cd ..   # only needed for --with-store
 cd analytics_pipeline && pip install -e . && cd ..
 ```
 
@@ -73,13 +109,27 @@ pip install -e ".[dev]"
 pytest
 ```
 
-## Architecture
+## Pipeline stages
+
+```
+Intake Engine       (always)
+    ↓
+Metrics Engine      (always)
+    ↓
+Report Engine       (always)
+    ↓
+Analytics Store     (optional — enabled with --with-store)
+    ↓
+Visuals             (future_stages)
+```
+
+The store stage runs only after all three core stages succeed. If report fails, store is skipped.
+
+## Internal architecture
 
 | Module | Role |
 |---|---|
 | `stages.py` | Stage definitions — `StageContext`, `StageResult`, command builders, `ACTIVE_STAGES` |
-| `runner.py` | Executes stages sequentially, stops on first failure |
+| `runner.py` | Executes stages sequentially, stops on first failure; runs optional store stage |
 | `summary.py` | Builds and writes `pipeline_summary.json` |
 | `cli.py` | `analytics-pipeline run` entry point |
-
-To add a future stage (e.g. `store`), add a command builder function and append `("store", build_store_cmd)` to `ACTIVE_STAGES` in `stages.py`. No other files need to change.

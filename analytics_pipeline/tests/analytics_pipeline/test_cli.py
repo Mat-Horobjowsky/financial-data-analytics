@@ -213,3 +213,64 @@ def test_output_defaults_to_outputs_pipeline():
             pass
 
     assert captured["ctx"].output_root == Path("outputs/pipeline")
+
+
+# --- --with-store flag ---
+
+
+def test_with_store_defaults_to_false():
+    from analytics_pipeline import cli
+    captured = {}
+
+    def _capture_pipeline(ctx):
+        captured["ctx"] = ctx
+        return _all_success()
+
+    with patch.object(Path, "exists", return_value=True), \
+         patch("analytics_pipeline.cli.run_pipeline", side_effect=_capture_pipeline), \
+         patch("analytics_pipeline.cli.write_summary", return_value=Path("/out/pipeline_summary.json")), \
+         patch("sys.argv", ["analytics-pipeline", "run", "--input", "x.csv"]):
+        try:
+            cli.main()
+        except SystemExit:
+            pass
+
+    assert captured["ctx"].with_store is False
+
+
+def test_with_store_flag_sets_context():
+    from analytics_pipeline import cli
+    captured = {}
+
+    def _capture_pipeline(ctx):
+        captured["ctx"] = ctx
+        return _all_success()
+
+    with patch.object(Path, "exists", return_value=True), \
+         patch("analytics_pipeline.cli.run_pipeline", side_effect=_capture_pipeline), \
+         patch("analytics_pipeline.cli.write_summary", return_value=Path("/out/pipeline_summary.json")), \
+         patch("sys.argv", ["analytics-pipeline", "run", "--input", "x.csv", "--with-store"]):
+        try:
+            cli.main()
+        except SystemExit:
+            pass
+
+    assert captured["ctx"].with_store is True
+
+
+def test_run_exits_zero_with_store_flag():
+    from analytics_pipeline import cli
+    all_with_store = {
+        **_all_success(),
+        "store": _result("store"),
+    }
+    with patch.object(Path, "exists", return_value=True), \
+         patch("analytics_pipeline.cli.run_pipeline", return_value=all_with_store), \
+         patch("analytics_pipeline.cli.write_summary", return_value=Path("/out/pipeline_summary.json")), \
+         patch("sys.argv", ["analytics-pipeline", "run", "--input", "x.csv", "--with-store"]):
+        try:
+            cli.main()
+            code = 0
+        except SystemExit as e:
+            code = e.code
+    assert code is None or code == 0

@@ -12,16 +12,18 @@ from analytics_pipeline.stages import (
     build_intake_cmd,
     build_metrics_cmd,
     build_report_cmd,
+    build_store_cmd,
 )
 
 
-def _ctx(tmp_path, with_time=False, template="full_report"):
+def _ctx(tmp_path, with_time=False, template="full_report", with_store=False):
     return StageContext(
         input_file=tmp_path / "data.csv",
         output_root=tmp_path / "out",
         with_time=with_time,
         template=template,
         results={},
+        with_store=with_store,
     )
 
 
@@ -224,3 +226,60 @@ def test_future_stages_is_list():
 def test_future_stages_contains_store_and_visuals():
     assert "store" in FUTURE_STAGES
     assert "visuals" in FUTURE_STAGES
+
+
+# --- StageContext.with_store ---
+
+
+def test_stage_context_with_store_defaults_false(tmp_path):
+    ctx = StageContext(
+        input_file=tmp_path / "data.csv",
+        output_root=tmp_path / "out",
+        with_time=False,
+        template="full_report",
+        results={},
+    )
+    assert ctx.with_store is False
+
+
+def test_stage_context_with_store_true(tmp_path):
+    ctx = _ctx(tmp_path, with_store=True)
+    assert ctx.with_store is True
+
+
+# --- build_store_cmd ---
+
+
+def test_build_store_cmd_uses_python_m(tmp_path):
+    ctx = _ctx(tmp_path, with_store=True)
+    cmd = build_store_cmd(ctx)
+    assert cmd[0] == sys.executable
+    assert "-m" in cmd
+    assert "analytics_store.cli" in cmd
+
+
+def test_build_store_cmd_subcommand_is_build(tmp_path):
+    ctx = _ctx(tmp_path, with_store=True)
+    cmd = build_store_cmd(ctx)
+    assert "build" in cmd
+
+
+def test_build_store_cmd_metrics_dir(tmp_path):
+    ctx = _ctx(tmp_path, with_store=True)
+    cmd = build_store_cmd(ctx)
+    idx = cmd.index("--metrics")
+    assert cmd[idx + 1] == str(tmp_path / "out" / "metrics")
+
+
+def test_build_store_cmd_report_dir(tmp_path):
+    ctx = _ctx(tmp_path, with_store=True)
+    cmd = build_store_cmd(ctx)
+    idx = cmd.index("--report")
+    assert cmd[idx + 1] == str(tmp_path / "out" / "report")
+
+
+def test_build_store_cmd_output_db(tmp_path):
+    ctx = _ctx(tmp_path, with_store=True)
+    cmd = build_store_cmd(ctx)
+    idx = cmd.index("--output")
+    assert cmd[idx + 1] == str(tmp_path / "out" / "store" / "analytics.duckdb")
