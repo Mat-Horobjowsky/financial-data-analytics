@@ -1,15 +1,35 @@
 dashboard:
-  title: "Project Readiness Dashboard"
+  title: "NovaTech Systems — RFP Readiness Dashboard"
+  subtitle: "Transaction-readiness snapshot for NVT-2025-NAM based on 24 scoped requirements across capacity, timeline, technical, market, power, commercial, capital, and decision readiness."
   description: "Readiness metrics from Metrics Engine + Analytics Store"
   store_tables:
     metrics: long_metrics
     dictionary: metric_dictionary
     validation: metrics_validation_summary
+  kpi_labels:
+    readiness_completion_pct: "Readiness Completion"
+    total_requirement_count: "Scoped Requirements"
+    open_gap_count: "Open Gaps"
+    critical_item_count: "Critical Items"
+  kpi_descriptions:
+    readiness_completion_pct: "Share of scoped requirements marked complete or closed."
+    total_requirement_count: "Total checklist items included in this readiness snapshot."
+    open_gap_count: "Requirements still open, in progress, or not started."
+    critical_item_count: "Requirements marked critical for transaction readiness."
+  category_labels:
+    capacity: "Capacity Clarity"
+    timeline: "Timeline Clarity"
+    technical: "Technical Specs"
+    market: "Market Clarity"
+    power: "Power Strategy"
+    commercial: "Commercial Model"
+    capital: "Capital Readiness"
+    decision: "Decision Alignment"
 
 sections:
 
   - type: kpi_cards
-    title: "Key Readiness Metrics"
+    title: "Key Readiness Indicators"
     rollup_level: date_only
     metrics:
       - readiness_completion_pct

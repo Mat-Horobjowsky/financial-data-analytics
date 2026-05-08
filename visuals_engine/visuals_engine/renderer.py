@@ -23,13 +23,20 @@ def _completion_color(pct: float) -> str:
         return "#e74c3c"
 
 
-def _build_kpi_cards(kpi_rows: list[dict], metric_dict: dict) -> list[dict]:
+def _build_kpi_cards(
+    kpi_rows: list[dict],
+    metric_dict: dict,
+    kpi_labels: dict | None = None,
+    kpi_descriptions: dict | None = None,
+) -> list[dict]:
     display_order = [
         "readiness_completion_pct",
         "total_requirement_count",
         "open_gap_count",
         "critical_item_count",
     ]
+    kpi_labels = kpi_labels or {}
+    kpi_descriptions = kpi_descriptions or {}
     by_id = {r["metric_id"]: r for r in kpi_rows}
     cards = []
     for metric_id in display_order:
@@ -39,17 +46,22 @@ def _build_kpi_cards(kpi_rows: list[dict], metric_dict: dict) -> list[dict]:
         meta = metric_dict.get(metric_id, {})
         cards.append({
             "metric_id": metric_id,
-            "label": row["label"],
+            "label": kpi_labels.get(metric_id) or row["label"],
             "value": row["value"],
             "unit": row["unit"],
             "formatted_value": _format_value(row["value"], row["unit"]),
-            "description": meta.get("description", ""),
+            "description": kpi_descriptions.get(metric_id) or meta.get("description", ""),
             "is_primary": metric_id == "readiness_completion_pct",
         })
     return cards
 
 
-def _pivot_breakdown(rows: list[dict], segment_col: str) -> list[dict]:
+def _pivot_breakdown(
+    rows: list[dict],
+    segment_col: str,
+    label_map: dict | None = None,
+) -> list[dict]:
+    label_map = label_map or {}
     segments: dict[str, dict] = {}
     for row in rows:
         seg = row.get(segment_col, "")
@@ -62,7 +74,7 @@ def _pivot_breakdown(rows: list[dict], segment_col: str) -> list[dict]:
         completion = metrics.get("readiness_completion_pct", 0.0) or 0.0
         open_gaps = metrics.get("open_gap_count", 0.0) or 0.0
         result.append({
-            "name": name,
+            "name": label_map.get(name, name),
             "completion_pct": completion,
             "completion_pct_formatted": _format_value(completion, "%"),
             "open_gap_count": open_gaps,
@@ -77,12 +89,15 @@ def _pivot_breakdown(rows: list[dict], segment_col: str) -> list[dict]:
 
 def build_template_context(spec: dict, data: dict) -> dict:
     dashboard_conf = spec["dashboard"]
+    kpi_labels = dashboard_conf.get("kpi_labels", {})
+    kpi_descriptions = dashboard_conf.get("kpi_descriptions", {})
+    category_labels = dashboard_conf.get("category_labels", {})
     metric_dict = data.get("metric_dictionary", {})
 
-    kpi_cards = _build_kpi_cards(data.get("kpi_cards", []), metric_dict)
+    kpi_cards = _build_kpi_cards(data.get("kpi_cards", []), metric_dict, kpi_labels, kpi_descriptions)
 
     cat_rows_raw = data.get("category_breakdown")
-    category_rows = _pivot_breakdown(cat_rows_raw, "category") if cat_rows_raw else []
+    category_rows = _pivot_breakdown(cat_rows_raw, "category", category_labels) if cat_rows_raw else []
 
     mkt_rows_raw = data.get("market_breakdown")
     market_rows = _pivot_breakdown(mkt_rows_raw, "market") if mkt_rows_raw else []
@@ -95,7 +110,7 @@ def build_template_context(spec: dict, data: dict) -> dict:
 
     return {
         "title": dashboard_conf["title"],
-        "description": dashboard_conf["description"],
+        "subtitle": dashboard_conf.get("subtitle", ""),
         "as_of_date": data.get("as_of_date", ""),
         "kpi_cards": kpi_cards,
         "category_rows": category_rows,
@@ -103,9 +118,8 @@ def build_template_context(spec: dict, data: dict) -> dict:
         "kpi_section_title": section_titles.get("kpi_cards", "Key Metrics"),
         "category_section_title": section_titles.get("category_breakdown", "By Category"),
         "market_section_title": section_titles.get("market_breakdown", "By Market"),
-        "validation_status": validation["status"] if validation else None,
-        "validation_errors": validation["error_count"] if validation else 0,
-        "validation_warnings": validation["warning_count"] if validation else 0,
+        "validation_errors": validation["error_count"] if validation else None,
+        "validation_warnings": validation["warning_count"] if validation else None,
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
     }
 
