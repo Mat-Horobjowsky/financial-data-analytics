@@ -13,10 +13,19 @@ from analytics_pipeline.stages import (
     build_metrics_cmd,
     build_report_cmd,
     build_store_cmd,
+    build_visuals_cmd,
 )
 
 
-def _ctx(tmp_path, with_time=False, template="full_report", with_store=False):
+def _ctx(
+    tmp_path,
+    with_time=False,
+    template="full_report",
+    with_store=False,
+    with_visuals=False,
+    metrics_config=None,
+    schema_config=None,
+):
     return StageContext(
         input_file=tmp_path / "data.csv",
         output_root=tmp_path / "out",
@@ -24,6 +33,9 @@ def _ctx(tmp_path, with_time=False, template="full_report", with_store=False):
         template=template,
         results={},
         with_store=with_store,
+        with_visuals=with_visuals,
+        metrics_config=metrics_config,
+        schema_config=schema_config,
     )
 
 
@@ -223,9 +235,12 @@ def test_future_stages_is_list():
     assert isinstance(FUTURE_STAGES, list)
 
 
-def test_future_stages_contains_store_and_visuals():
+def test_future_stages_contains_store():
     assert "store" in FUTURE_STAGES
-    assert "visuals" in FUTURE_STAGES
+
+
+def test_future_stages_does_not_contain_visuals():
+    assert "visuals" not in FUTURE_STAGES
 
 
 # --- StageContext.with_store ---
@@ -283,3 +298,144 @@ def test_build_store_cmd_output_db(tmp_path):
     cmd = build_store_cmd(ctx)
     idx = cmd.index("--output")
     assert cmd[idx + 1] == str(tmp_path / "out" / "store" / "analytics.duckdb")
+
+
+# --- StageContext.with_visuals ---
+
+
+def test_stage_context_with_visuals_defaults_false(tmp_path):
+    ctx = StageContext(
+        input_file=tmp_path / "data.csv",
+        output_root=tmp_path / "out",
+        with_time=False,
+        template="full_report",
+        results={},
+    )
+    assert ctx.with_visuals is False
+
+
+def test_stage_context_with_visuals_true(tmp_path):
+    ctx = _ctx(tmp_path, with_visuals=True)
+    assert ctx.with_visuals is True
+
+
+# --- build_visuals_cmd ---
+
+
+def test_build_visuals_cmd_uses_python_m(tmp_path):
+    ctx = _ctx(tmp_path, with_visuals=True)
+    cmd = build_visuals_cmd(ctx)
+    assert cmd[0] == sys.executable
+    assert "-m" in cmd
+    assert "visuals_engine.cli" in cmd
+
+
+def test_build_visuals_cmd_subcommand_is_build(tmp_path):
+    ctx = _ctx(tmp_path, with_visuals=True)
+    cmd = build_visuals_cmd(ctx)
+    assert "build" in cmd
+
+
+def test_build_visuals_cmd_store_path(tmp_path):
+    ctx = _ctx(tmp_path, with_visuals=True)
+    cmd = build_visuals_cmd(ctx)
+    idx = cmd.index("--store")
+    assert cmd[idx + 1] == str(tmp_path / "out" / "store" / "analytics.duckdb")
+
+
+def test_build_visuals_cmd_spec_path_is_absolute(tmp_path):
+    ctx = _ctx(tmp_path, with_visuals=True)
+    cmd = build_visuals_cmd(ctx)
+    idx = cmd.index("--spec")
+    assert Path(cmd[idx + 1]).is_absolute()
+
+
+def test_build_visuals_cmd_spec_is_yaml(tmp_path):
+    ctx = _ctx(tmp_path, with_visuals=True)
+    cmd = build_visuals_cmd(ctx)
+    idx = cmd.index("--spec")
+    assert cmd[idx + 1].endswith(".yaml")
+
+
+def test_build_visuals_cmd_output_dir(tmp_path):
+    ctx = _ctx(tmp_path, with_visuals=True)
+    cmd = build_visuals_cmd(ctx)
+    idx = cmd.index("--output")
+    assert cmd[idx + 1] == str(tmp_path / "out" / "visuals")
+
+
+# --- StageContext custom metrics/schema config ---
+
+
+def test_stage_context_metrics_config_defaults_none(tmp_path):
+    ctx = _ctx(tmp_path)
+    assert ctx.metrics_config is None
+
+
+def test_stage_context_schema_config_defaults_none(tmp_path):
+    ctx = _ctx(tmp_path)
+    assert ctx.schema_config is None
+
+
+def test_stage_context_metrics_config_set(tmp_path):
+    p = Path("custom/metrics.yaml")
+    ctx = _ctx(tmp_path, metrics_config=p)
+    assert ctx.metrics_config == p
+
+
+def test_stage_context_schema_config_set(tmp_path):
+    p = Path("custom/schema.yaml")
+    ctx = _ctx(tmp_path, schema_config=p)
+    assert ctx.schema_config == p
+
+
+# --- build_metrics_cmd with custom config ---
+
+
+def test_build_metrics_cmd_uses_default_config_when_none(tmp_path):
+    ctx = _ctx(tmp_path)
+    cmd = build_metrics_cmd(ctx)
+    idx = cmd.index("--config")
+    assert "metrics.yaml" in cmd[idx + 1]
+
+
+def test_build_metrics_cmd_uses_default_schema_when_none(tmp_path):
+    ctx = _ctx(tmp_path)
+    cmd = build_metrics_cmd(ctx)
+    idx = cmd.index("--schema")
+    assert "schema.yaml" in cmd[idx + 1]
+
+
+def test_build_metrics_cmd_default_config_is_absolute(tmp_path):
+    ctx = _ctx(tmp_path)
+    cmd = build_metrics_cmd(ctx)
+    assert Path(cmd[cmd.index("--config") + 1]).is_absolute()
+    assert Path(cmd[cmd.index("--schema") + 1]).is_absolute()
+
+
+def test_build_metrics_cmd_uses_custom_config_when_provided(tmp_path):
+    ctx = _ctx(tmp_path, metrics_config=Path("custom/readiness_metrics.yaml"))
+    cmd = build_metrics_cmd(ctx)
+    idx = cmd.index("--config")
+    assert Path(cmd[idx + 1]) == Path("custom/readiness_metrics.yaml")
+
+
+def test_build_metrics_cmd_uses_custom_schema_when_provided(tmp_path):
+    ctx = _ctx(tmp_path, schema_config=Path("custom/readiness_schema.yaml"))
+    cmd = build_metrics_cmd(ctx)
+    idx = cmd.index("--schema")
+    assert Path(cmd[idx + 1]) == Path("custom/readiness_schema.yaml")
+
+
+def test_build_metrics_cmd_readiness_configs(tmp_path):
+    """Readiness config files exist and wire into the command correctly."""
+    import metrics_engine as _me
+    config_dir = Path(_me.__file__).parent.parent / "config"
+    readiness_metrics = config_dir / "readiness_metrics.yaml"
+    readiness_schema = config_dir / "readiness_schema.yaml"
+    assert readiness_metrics.exists(), f"Missing: {readiness_metrics}"
+    assert readiness_schema.exists(), f"Missing: {readiness_schema}"
+    ctx = _ctx(tmp_path, metrics_config=readiness_metrics, schema_config=readiness_schema)
+    cmd = build_metrics_cmd(ctx)
+    assert "readiness_metrics.yaml" in cmd[cmd.index("--config") + 1]
+    assert "readiness_schema.yaml" in cmd[cmd.index("--schema") + 1]

@@ -27,6 +27,9 @@ class StageContext:
     template: str
     results: dict[str, StageResult]
     with_store: bool = False
+    with_visuals: bool = False
+    metrics_config: Path | None = None
+    schema_config: Path | None = None
 
 
 def build_intake_cmd(ctx: StageContext) -> list[str]:
@@ -47,6 +50,10 @@ def build_metrics_cmd(ctx: StageContext) -> list[str]:
     stem = ctx.input_file.stem
     clean_csv = ctx.output_root / "intake" / f"{stem}_clean.csv"
     config_dir = Path(_me.__file__).parent.parent / "config"
+
+    metrics_config = str(ctx.metrics_config) if ctx.metrics_config else str(config_dir / "metrics.yaml")
+    schema_config = str(ctx.schema_config) if ctx.schema_config else str(config_dir / "schema.yaml")
+
     cmd = [
         sys.executable,
         "-m",
@@ -57,9 +64,9 @@ def build_metrics_cmd(ctx: StageContext) -> list[str]:
         "--output",
         str(ctx.output_root / "metrics"),
         "--config",
-        str(config_dir / "metrics.yaml"),
+        metrics_config,
         "--schema",
-        str(config_dir / "schema.yaml"),
+        schema_config,
     ]
     if ctx.with_time:
         cmd.append("--with-time")
@@ -96,10 +103,28 @@ def build_store_cmd(ctx: StageContext) -> list[str]:
     ]
 
 
+def build_visuals_cmd(ctx: StageContext) -> list[str]:
+    import visuals_engine as _ve
+
+    spec_path = Path(_ve.__file__).parent / "specs" / "readiness_dashboard.yaml"
+    return [
+        sys.executable,
+        "-m",
+        "visuals_engine.cli",
+        "build",
+        "--store",
+        str(ctx.output_root / "store" / "analytics.duckdb"),
+        "--spec",
+        str(spec_path),
+        "--output",
+        str(ctx.output_root / "visuals"),
+    ]
+
+
 ACTIVE_STAGES: list[tuple[str, Callable]] = [
     ("intake", build_intake_cmd),
     ("metrics", build_metrics_cmd),
     ("report", build_report_cmd),
 ]
 
-FUTURE_STAGES: list[str] = ["store", "visuals"]
+FUTURE_STAGES: list[str] = ["store"]

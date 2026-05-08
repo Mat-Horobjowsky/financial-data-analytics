@@ -17,13 +17,26 @@ def cmd_run(args) -> None:
         print(f"Error: input file not found: {input_file}", file=sys.stderr)
         sys.exit(1)
 
+    metrics_config = Path(args.metrics_config) if args.metrics_config else None
+    schema_config = Path(args.schema_config) if args.schema_config else None
+
+    if metrics_config and not metrics_config.exists():
+        print(f"Error: metrics config not found: {metrics_config}", file=sys.stderr)
+        sys.exit(1)
+    if schema_config and not schema_config.exists():
+        print(f"Error: schema config not found: {schema_config}", file=sys.stderr)
+        sys.exit(1)
+
     ctx = StageContext(
         input_file=input_file,
         output_root=Path(args.output),
         with_time=args.with_time,
         template=args.template,
         results={},
-        with_store=args.with_store,
+        with_store=args.with_store or args.with_visuals,
+        with_visuals=args.with_visuals,
+        metrics_config=metrics_config,
+        schema_config=schema_config,
     )
 
     results = run_pipeline(ctx)
@@ -72,6 +85,24 @@ def main() -> None:
         dest="with_store",
         action="store_true",
         help="Run the analytics_store stage after report (creates store/analytics.duckdb)",
+    )
+    run_p.add_argument(
+        "--with-visuals",
+        dest="with_visuals",
+        action="store_true",
+        help="Run the visuals_engine stage after store (creates readiness_dashboard.html); implies --with-store",
+    )
+    run_p.add_argument(
+        "--metrics-config",
+        dest="metrics_config",
+        default=None,
+        help="Custom Metrics Engine config YAML (default: metrics_engine/config/metrics.yaml)",
+    )
+    run_p.add_argument(
+        "--schema-config",
+        dest="schema_config",
+        default=None,
+        help="Custom Metrics Engine schema YAML (default: metrics_engine/config/schema.yaml)",
     )
 
     args = parser.parse_args()

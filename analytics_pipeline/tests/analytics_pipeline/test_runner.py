@@ -8,7 +8,7 @@ from analytics_pipeline.runner import run_pipeline, run_stage
 from analytics_pipeline.stages import ACTIVE_STAGES, StageContext, StageResult
 
 
-def _ctx(tmp_path, with_time=False, template="full_report", with_store=False):
+def _ctx(tmp_path, with_time=False, template="full_report", with_store=False, with_visuals=False, metrics_config=None, schema_config=None):
     return StageContext(
         input_file=tmp_path / "data.csv",
         output_root=tmp_path / "out",
@@ -16,6 +16,9 @@ def _ctx(tmp_path, with_time=False, template="full_report", with_store=False):
         template=template,
         results={},
         with_store=with_store,
+        with_visuals=with_visuals,
+        metrics_config=metrics_config,
+        schema_config=schema_config,
     )
 
 
@@ -208,3 +211,49 @@ def test_run_pipeline_store_extra_has_output_path(tmp_path):
         results = run_pipeline(ctx)
     assert "output_path" in results["store"].extra
     assert results["store"].extra["output_path"].endswith("analytics.duckdb")
+
+
+# --- visuals stage (optional) ---
+
+
+def test_run_pipeline_skips_visuals_when_with_visuals_false(tmp_path):
+    ctx = _ctx(tmp_path, with_store=True, with_visuals=False)
+    with patch("analytics_pipeline.runner.subprocess.run", return_value=_mock_proc(0)), \
+         patch("analytics_pipeline.runner.ACTIVE_STAGES", _make_success_stages()):
+        results = run_pipeline(ctx)
+    assert "visuals" not in results
+
+
+def test_run_pipeline_runs_visuals_when_with_visuals_true(tmp_path):
+    ctx = _ctx(tmp_path, with_store=True, with_visuals=True)
+    with patch("analytics_pipeline.runner.subprocess.run", return_value=_mock_proc(0)), \
+         patch("analytics_pipeline.runner.ACTIVE_STAGES", _make_success_stages()):
+        results = run_pipeline(ctx)
+    assert "visuals" in results
+    assert results["visuals"].status == "success"
+
+
+def test_run_pipeline_visuals_not_run_if_store_failed(tmp_path):
+    ctx = _ctx(tmp_path, with_store=True, with_visuals=True)
+    call_count = [0]
+
+    def _side_effect(cmd, **kwargs):
+        call_count[0] += 1
+        if call_count[0] == 4:
+            return _mock_proc(1, "store failed")
+        return _mock_proc(0)
+
+    with patch("analytics_pipeline.runner.subprocess.run", side_effect=_side_effect), \
+         patch("analytics_pipeline.runner.ACTIVE_STAGES", _make_success_stages()):
+        results = run_pipeline(ctx)
+
+    assert results["store"].status == "failed"
+    assert "visuals" not in results
+
+
+def test_run_pipeline_visuals_not_run_without_store(tmp_path):
+    ctx = _ctx(tmp_path, with_store=False, with_visuals=True)
+    with patch("analytics_pipeline.runner.subprocess.run", return_value=_mock_proc(0)), \
+         patch("analytics_pipeline.runner.ACTIVE_STAGES", _make_success_stages()):
+        results = run_pipeline(ctx)
+    assert "visuals" not in results

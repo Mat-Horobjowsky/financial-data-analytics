@@ -17,23 +17,24 @@ Clean data → Trusted metrics → Visuals anywhere
 | Engine | Version | Input | Output |
 |---|---|---|---|
 | **Intake Engine** | v1.x | Raw CSV / XLSX (messy, unstructured) | Clean CSV, HTML quality report, validation JSON, profiling JSON |
-| **Metrics Engine** | v1.1 | Clean CSV | Long + wide KPI tables, metric dictionary, validation report, Excel workbook |
+| **Metrics Engine** | v0.1 | Clean CSV | Long + wide KPI tables, metric dictionary, validation report, Excel workbook; alternate metric packs via `--config` / `--schema` |
 | **Report Engine** | v1.2 | Metrics Engine output directory | Markdown + HTML reports, summary JSON, insights JSON |
-| **Analytics Pipeline** | v0.2 | Raw CSV / XLSX | All engine outputs + `pipeline_summary.json`; optional Analytics Store stage via `--with-store` |
-| **Analytics Store** | v0.1 | Metrics Engine output + Report Engine output (optional) | DuckDB database — 6 tables, 3 views |
+| **Analytics Store** | v0.1 | Metrics Engine output + Report Engine output (optional) | `analytics.duckdb` — 6 tables, 3 views |
+| **Visuals Engine** | v0.1 | `analytics.duckdb` | Self-contained HTML dashboard, `visuals_summary.json` |
+| **Analytics Pipeline** | v0.2 | Raw CSV / XLSX | All engine outputs + `pipeline_summary.json`; optional store and visuals stages via `--with-store` / `--with-visuals`; alternate metric configs via `--metrics-config` / `--schema-config` |
 
 Each engine is a standalone Python CLI package with tests, documented outputs, and a clearly scoped role in the pipeline.
 
 ```
 Intake Engine
     ↓
-Metrics Engine
+Metrics Engine         (YAML-configurable — supports any metric pack)
     ↓
 Report Engine
     ↓
-Analytics Store     (--with-store)
+Analytics Store        (--with-store)
     ↓
-Visuals             (planned)
+Visuals Engine         (--with-visuals)
 ```
 
 ---
@@ -109,6 +110,51 @@ Outputs a compact report containing Header, Validation, KPI Snapshot, and Key In
 
 ---
 
+## Readiness Pipeline Demo
+
+The Analytics Pipeline supports alternate metric packs via `--metrics-config` and `--schema-config`. The readiness metrics pack is the first working example.
+
+**Strategic wedge:** help data center occupiers, developers, brokers, and investors understand whether a project is ready to transact.
+
+### One-command readiness pipeline
+
+```bash
+analytics-pipeline run \
+  --input metrics_engine/data/sample_readiness.csv \
+  --output outputs/pipeline_readiness \
+  --metrics-config metrics_engine/config/readiness_metrics.yaml \
+  --schema-config metrics_engine/config/readiness_schema.yaml \
+  --with-visuals
+```
+
+Runs all five stages and produces:
+
+```
+outputs/pipeline_readiness/
+  intake/                                  ← cleaned readiness data
+  metrics/                                 ← readiness KPI tables
+  report/                                  ← report against readiness metrics
+  store/analytics.duckdb                   ← DuckDB store
+  visuals/readiness_dashboard.html         ← self-contained HTML dashboard
+  visuals/visuals_summary.json
+  pipeline_summary.json                    ← status + command for all five stages
+```
+
+### Readiness metrics
+
+| Metric | Description |
+|---|---|
+| `readiness_completion_pct` | Percentage of requirements marked complete or closed |
+| `total_requirement_count` | Total requirements in scope |
+| `open_gap_count` | Requirements not yet complete |
+| `critical_item_count` | Requirements marked critical |
+
+### Dashboard output
+
+`readiness_dashboard.html` opens offline in any browser. It renders KPI cards, category breakdowns, and market breakdowns from `analytics.duckdb`. No external dependencies, no server required.
+
+---
+
 ## Intake Engine
 
 A modular Python CLI ingestion tool that converts messy CSV and XLSX files into clean, analytics-ready outputs.
@@ -164,7 +210,7 @@ Instead of calculating KPIs separately in dashboards, spreadsheets, and reports,
 
 - CSV and Excel input
 - Schema-driven column normalization
-- YAML-based metric definitions
+- YAML-based metric definitions — alternate metric packs supported via `--config` and `--schema`
 - Validation before calculation
 - Configurable segment rollups (date, date+region, date+provider, date+region+provider)
 - Sum-before-divide KPI logic (prevents weighted-average distortion)
@@ -173,6 +219,7 @@ Instead of calculating KPIs separately in dashboards, spreadsheets, and reports,
 - Validation report export
 - Excel workbook export
 - Prior-period time analysis (`--with-time`)
+- Readiness metrics pack (`count`, `conditional_count`, `completion_pct` types)
 - CLI workflow
 - Test coverage
 
@@ -298,6 +345,11 @@ analytics-pipeline run \
 | `--with-time` | off | Enable prior-period time analysis in Metrics Engine |
 | `--template` | `full_report` | Report template (`full_report`, `executive_summary`, `metrics_detail`) |
 | `--with-store` | off | Run Analytics Store stage after report; creates `store/analytics.duckdb` |
+| `--with-visuals` | off | Run Visuals Engine after store; creates `visuals/readiness_dashboard.html`; implies `--with-store` |
+| `--metrics-config` | `metrics_engine/config/metrics.yaml` | Custom Metrics Engine config YAML (enables alternate metric packs) |
+| `--schema-config` | `metrics_engine/config/schema.yaml` | Custom Metrics Engine schema YAML |
+
+`pipeline_summary.json` records the status and command for all stages that were enabled.
 
 ### Output Structure
 
@@ -306,7 +358,8 @@ analytics-pipeline run \
 ├── intake/     # Clean CSV, HTML quality report, validation JSON
 ├── metrics/    # Long/wide metrics, metric dictionary, validation report, Excel workbook
 ├── report/     # report.html, report.md, summary.json, insights.json
-├── store/      # analytics.duckdb — only created when --with-store is passed
+├── store/      # analytics.duckdb — created when --with-store or --with-visuals is passed
+├── visuals/    # readiness_dashboard.html, visuals_summary.json — created when --with-visuals is passed
 └── pipeline_summary.json
 ```
 
@@ -359,6 +412,49 @@ analytics-store build \
 
 ---
 
+## Visuals Engine
+
+A lightweight HTML dashboard generator that reads `analytics.duckdb` and produces a self-contained offline dashboard.
+
+### Purpose
+
+The Visuals Engine closes the loop from raw data to visual output. It reads the Analytics Store directly and renders KPI cards, category breakdowns, and market breakdowns into a single HTML file — no server, no CDN, no external dependencies.
+
+### Key Features
+
+- Reads `analytics.duckdb` via DuckDB Python library
+- YAML dashboard spec — defines sections, metrics, rollup levels, and segment columns
+- KPI cards — latest value per metric, formatted by unit
+- Category and market breakdowns — CSS progress bars, color-coded by completion percentage
+- Self-contained HTML — inline CSS, no JavaScript, works offline
+- `visuals_summary.json` — machine-readable metadata: metrics rendered, sections rendered, sections skipped, validation status
+- CLI workflow
+- Test coverage
+
+### Setup
+
+```bash
+cd visuals_engine && pip install -e ".[dev]"
+```
+
+### CLI
+
+```bash
+visuals-engine build \
+  --store <path/to/analytics.duckdb> \
+  --spec <path/to/dashboard_spec.yaml> \
+  --output <output_dir>
+```
+
+### Example Outputs
+
+| File | Description |
+|---|---|
+| `readiness_dashboard.html` | Self-contained HTML dashboard — KPI cards, category and market breakdowns |
+| `visuals_summary.json` | Metadata: metrics rendered, sections rendered/skipped, validation status |
+
+---
+
 ## AI Workflows
 
 The `ai_workflows/` folder contains reusable workflow instructions for AI coding assistants.
@@ -383,7 +479,7 @@ The `archive/` folder contains earlier Excel and SQL projects.
 
 These are preserved for portfolio history and learning progression but are not part of the active engine stack.
 
-Active development is focused on `intake_engine/`, `metrics_engine/`, `report_engine/`, `analytics_pipeline/`, `analytics_store/`, and `ai_workflows/`.
+Active development is focused on `intake_engine/`, `metrics_engine/`, `report_engine/`, `analytics_pipeline/`, `analytics_store/`, `visuals_engine/`, and `ai_workflows/`.
 
 ---
 
@@ -393,17 +489,20 @@ Active development is focused on `intake_engine/`, `metrics_engine/`, `report_en
 
 - **Intake Engine** — ingest and clean messy CSV / XLSX files; validate, profile, and export clean analytics-ready data
 - **Metrics Engine v1.1** — YAML-driven KPI calculation across configurable rollup levels; prior-period time analysis with `--with-time`
+- **Metrics Engine — Readiness metrics pack** — alternate YAML config for `count`, `conditional_count`, and `completion_pct` metric types; enables project readiness tracking via `--config` / `--schema`
 - **Report Engine v1.2** — client-ready Markdown and HTML reports; KPI Snapshot; deterministic Key Insights; three built-in templates (`full_report`, `executive_summary`, `metrics_detail`); `insights.json`
 - **Analytics Pipeline v0.1** — single-command orchestrator running all three engines in sequence; stops on first failure; writes `pipeline_summary.json`
 - **Analytics Store v0.1** — DuckDB analytics store for Metrics Engine and Report Engine outputs; 6 tables, 3 views; `--report` is optional; standalone CLI
-- **Analytics Pipeline v0.2** — optional `--with-store` flag adds Analytics Store as a fourth stage; `pipeline_summary.json` gains `with_store` field; `future_stages` now shows only `["visuals"]` when store is enabled
-- **End-to-End Pipeline** — full Intake → Metrics → Report → Store workflow running on a shared sample dataset
+- **Analytics Pipeline v0.2** — optional `--with-store` flag adds Analytics Store as a fourth stage; `pipeline_summary.json` records all stage results
+- **Visuals Engine v0.1** — YAML-spec-driven HTML dashboard generator; reads `analytics.duckdb` directly; KPI cards, category and market breakdowns; self-contained offline HTML; `visuals_summary.json`
+- **Analytics Pipeline v0.2 (visuals + config flags)** — `--with-visuals` runs Visuals Engine as a fifth stage; `--metrics-config` and `--schema-config` enable any metric pack through the full pipeline; `--with-visuals` implies `--with-store`
+- **End-to-End Pipeline** — full Intake → Metrics → Report → Store → Visuals workflow on both data center KPIs and readiness metrics
 
 ### Next Priorities
 
-**Visual Layer** — reusable Power BI dashboards or lightweight Python charts that consume `analytics.duckdb` directly; the remaining entry in `future_stages`
-
 **PDF Export** — optional PDF generation from Report Engine's existing HTML output, for direct client delivery
+
+**Report Engine — readiness template** — a report template tuned to readiness metric labels and structure, replacing the generic KPI defaults when running the readiness pack
 
 ---
 

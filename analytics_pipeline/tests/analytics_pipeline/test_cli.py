@@ -274,3 +274,154 @@ def test_run_exits_zero_with_store_flag():
         except SystemExit as e:
             code = e.code
     assert code is None or code == 0
+
+
+# --- --with-visuals flag ---
+
+
+def test_with_visuals_defaults_to_false():
+    from analytics_pipeline import cli
+    captured = {}
+
+    def _capture_pipeline(ctx):
+        captured["ctx"] = ctx
+        return _all_success()
+
+    with patch.object(Path, "exists", return_value=True), \
+         patch("analytics_pipeline.cli.run_pipeline", side_effect=_capture_pipeline), \
+         patch("analytics_pipeline.cli.write_summary", return_value=Path("/out/pipeline_summary.json")), \
+         patch("sys.argv", ["analytics-pipeline", "run", "--input", "x.csv"]):
+        try:
+            cli.main()
+        except SystemExit:
+            pass
+
+    assert captured["ctx"].with_visuals is False
+
+
+def test_with_visuals_flag_sets_context():
+    from analytics_pipeline import cli
+    captured = {}
+
+    def _capture_pipeline(ctx):
+        captured["ctx"] = ctx
+        return _all_success()
+
+    with patch.object(Path, "exists", return_value=True), \
+         patch("analytics_pipeline.cli.run_pipeline", side_effect=_capture_pipeline), \
+         patch("analytics_pipeline.cli.write_summary", return_value=Path("/out/pipeline_summary.json")), \
+         patch("sys.argv", ["analytics-pipeline", "run", "--input", "x.csv", "--with-visuals"]):
+        try:
+            cli.main()
+        except SystemExit:
+            pass
+
+    assert captured["ctx"].with_visuals is True
+
+
+def test_with_visuals_implies_with_store():
+    from analytics_pipeline import cli
+    captured = {}
+
+    def _capture_pipeline(ctx):
+        captured["ctx"] = ctx
+        return _all_success()
+
+    with patch.object(Path, "exists", return_value=True), \
+         patch("analytics_pipeline.cli.run_pipeline", side_effect=_capture_pipeline), \
+         patch("analytics_pipeline.cli.write_summary", return_value=Path("/out/pipeline_summary.json")), \
+         patch("sys.argv", ["analytics-pipeline", "run", "--input", "x.csv", "--with-visuals"]):
+        try:
+            cli.main()
+        except SystemExit:
+            pass
+
+    assert captured["ctx"].with_store is True
+
+
+# --- --metrics-config and --schema-config flags ---
+
+
+def _capture_ctx(argv):
+    """Run cli.main() with the given argv and return the captured StageContext."""
+    from analytics_pipeline import cli
+    captured = {}
+
+    def _capture_pipeline(ctx):
+        captured["ctx"] = ctx
+        return _all_success()
+
+    with patch.object(Path, "exists", return_value=True), \
+         patch("analytics_pipeline.cli.run_pipeline", side_effect=_capture_pipeline), \
+         patch("analytics_pipeline.cli.write_summary", return_value=Path("/out/pipeline_summary.json")), \
+         patch("sys.argv", argv):
+        try:
+            cli.main()
+        except SystemExit:
+            pass
+
+    return captured.get("ctx")
+
+
+def test_metrics_config_defaults_to_none():
+    ctx = _capture_ctx(["analytics-pipeline", "run", "--input", "x.csv"])
+    assert ctx.metrics_config is None
+
+
+def test_schema_config_defaults_to_none():
+    ctx = _capture_ctx(["analytics-pipeline", "run", "--input", "x.csv"])
+    assert ctx.schema_config is None
+
+
+def test_metrics_config_flag_sets_context():
+    ctx = _capture_ctx([
+        "analytics-pipeline", "run", "--input", "x.csv",
+        "--metrics-config", "custom/metrics.yaml",
+    ])
+    assert ctx.metrics_config == Path("custom/metrics.yaml")
+
+
+def test_schema_config_flag_sets_context():
+    ctx = _capture_ctx([
+        "analytics-pipeline", "run", "--input", "x.csv",
+        "--schema-config", "custom/schema.yaml",
+    ])
+    assert ctx.schema_config == Path("custom/schema.yaml")
+
+
+def test_metrics_config_missing_file_exits_nonzero():
+    from analytics_pipeline import cli
+
+    def _exists(self):
+        return str(self) != "missing_metrics.yaml"
+
+    with patch.object(Path, "exists", _exists), \
+         patch("sys.argv", [
+             "analytics-pipeline", "run", "--input", "x.csv",
+             "--metrics-config", "missing_metrics.yaml",
+         ]):
+        try:
+            cli.main()
+            code = 0
+        except SystemExit as e:
+            code = e.code
+    assert code != 0
+
+
+def test_schema_config_missing_file_exits_nonzero():
+    from analytics_pipeline import cli
+
+    def _exists(self):
+        return str(self) != "missing_schema.yaml"
+
+    with patch.object(Path, "exists", _exists), \
+         patch("sys.argv", [
+             "analytics-pipeline", "run", "--input", "x.csv",
+             "--schema-config", "missing_schema.yaml",
+         ]):
+        try:
+            cli.main()
+            code = 0
+        except SystemExit as e:
+            code = e.code
+    assert code != 0

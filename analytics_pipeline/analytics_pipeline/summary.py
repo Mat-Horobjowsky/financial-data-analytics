@@ -12,6 +12,8 @@ def build_pipeline_summary(ctx: StageContext, results: dict[str, StageResult]) -
     all_names = [name for name, _ in ACTIVE_STAGES]
     if ctx.with_store:
         all_names.append("store")
+    if ctx.with_visuals:
+        all_names.append("visuals")
     overall = (
         "success"
         if results and all(r.status == "success" for r in results.values())
@@ -38,6 +40,7 @@ def build_pipeline_summary(ctx: StageContext, results: dict[str, StageResult]) -
         "output_dir": str(ctx.output_root),
         "with_time": ctx.with_time,
         "with_store": ctx.with_store,
+        "with_visuals": ctx.with_visuals,
         "template": ctx.template,
         "status": overall,
         "stages": stages_out,

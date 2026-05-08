@@ -34,6 +34,37 @@ analytics-pipeline run \
 | `--with-time` | off | Enable prior-period time analysis in Metrics Engine |
 | `--template` | `full_report` | Report template (`full_report`, `executive_summary`, `metrics_detail`) |
 | `--with-store` | off | Run Analytics Store stage after report; creates `store/analytics.duckdb` |
+| `--with-visuals` | off | Run Visuals Engine after store; creates `visuals/readiness_dashboard.html`; implies `--with-store` |
+| `--metrics-config` | `metrics_engine/config/metrics.yaml` | Custom Metrics Engine config YAML (enables alternate metric packs) |
+| `--schema-config` | `metrics_engine/config/schema.yaml` | Custom Metrics Engine schema YAML |
+
+## Usage examples
+
+### Data center KPIs (default)
+
+```bash
+analytics-pipeline run \
+  --input data/sample_data_centers.csv \
+  --output outputs/pipeline \
+  --with-time \
+  --template full_report \
+  --with-store
+```
+
+### Readiness metrics pack
+
+Pass `--metrics-config` and `--schema-config` to run any alternate metric pack. The pipeline does not hardcode readiness — the flags are generic.
+
+```bash
+analytics-pipeline run \
+  --input metrics_engine/data/sample_readiness.csv \
+  --output outputs/pipeline_readiness \
+  --metrics-config metrics_engine/config/readiness_metrics.yaml \
+  --schema-config metrics_engine/config/readiness_schema.yaml \
+  --with-visuals
+```
+
+Produces `outputs/pipeline_readiness/visuals/readiness_dashboard.html`.
 
 ## Output structure
 
@@ -44,6 +75,9 @@ analytics-pipeline run \
 ├── report/          # Report Engine outputs (report.html, report.md, insights.json, ...)
 ├── store/           # Analytics Store output — only created when --with-store is passed
 │   └── analytics.duckdb
+├── visuals/         # Visuals Engine output — only created when --with-visuals is passed
+│   ├── readiness_dashboard.html
+│   └── visuals_summary.json
 └── pipeline_summary.json
 ```
 
@@ -66,7 +100,7 @@ Without `--with-store`:
     "metrics": {"status": "success", "command": "...", "output_dir": "...", "generated_files": [...]},
     "report":  {"status": "success", "command": "...", "output_dir": "...", "generated_files": [...], "template": "full_report"}
   },
-  "future_stages": ["store", "visuals"]
+  "future_stages": ["store"]
 }
 ```
 
@@ -85,7 +119,7 @@ With `--with-store`:
     "report":  {"status": "success", ..., "template": "full_report"},
     "store":   {"status": "success", "output_dir": ".../store", "generated_files": ["analytics.duckdb"], "output_path": ".../store/analytics.duckdb"}
   },
-  "future_stages": ["visuals"]
+  "future_stages": []
 }
 ```
 
@@ -114,16 +148,16 @@ pytest
 ```
 Intake Engine       (always)
     ↓
-Metrics Engine      (always)
+Metrics Engine      (always — uses --metrics-config / --schema-config if provided)
     ↓
 Report Engine       (always)
     ↓
-Analytics Store     (optional — enabled with --with-store)
+Analytics Store     (optional — enabled with --with-store or implied by --with-visuals)
     ↓
-Visuals             (future_stages)
+Visuals Engine      (optional — enabled with --with-visuals)
 ```
 
-The store stage runs only after all three core stages succeed. If report fails, store is skipped.
+Each stage runs only after the previous one succeeds. If any stage fails, later stages are skipped.
 
 ## Internal architecture
 

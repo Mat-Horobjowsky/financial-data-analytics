@@ -9,7 +9,7 @@ from analytics_pipeline.stages import StageContext, StageResult
 from analytics_pipeline.summary import build_pipeline_summary, write_summary
 
 
-def _ctx(tmp_path, with_time=False, template="full_report", with_store=False):
+def _ctx(tmp_path, with_time=False, template="full_report", with_store=False, with_visuals=False):
     return StageContext(
         input_file=tmp_path / "data.csv",
         output_root=tmp_path / "out",
@@ -17,6 +17,7 @@ def _ctx(tmp_path, with_time=False, template="full_report", with_store=False):
         template=template,
         results={},
         with_store=with_store,
+        with_visuals=with_visuals,
     )
 
 
@@ -149,7 +150,7 @@ def test_summary_future_stages(tmp_path):
     ctx = _ctx(tmp_path)
     s = build_pipeline_summary(ctx, _all_success_results())
     assert "store" in s["future_stages"]
-    assert "visuals" in s["future_stages"]
+    assert "visuals" not in s["future_stages"]
 
 
 # --- write_summary ---
@@ -226,4 +227,41 @@ def test_summary_future_stages_excludes_store_when_with_store(tmp_path):
     results = {**_all_success_results(), "store": store_result}
     s = build_pipeline_summary(ctx, results)
     assert "store" not in s["future_stages"]
-    assert "visuals" in s["future_stages"]
+    assert "visuals" not in s["future_stages"]
+
+
+# --- with_visuals in summary ---
+
+
+def test_summary_has_with_visuals_false_by_default(tmp_path):
+    ctx = _ctx(tmp_path)
+    s = build_pipeline_summary(ctx, _all_success_results())
+    assert s["with_visuals"] is False
+
+
+def test_summary_has_with_visuals_true_when_set(tmp_path):
+    ctx = _ctx(tmp_path, with_store=True, with_visuals=True)
+    results = {**_all_success_results(), "store": _result("store"), "visuals": _result("visuals")}
+    s = build_pipeline_summary(ctx, results)
+    assert s["with_visuals"] is True
+
+
+def test_summary_visuals_not_in_stages_when_without_visuals(tmp_path):
+    ctx = _ctx(tmp_path, with_visuals=False)
+    s = build_pipeline_summary(ctx, _all_success_results())
+    assert "visuals" not in s["stages"]
+
+
+def test_summary_visuals_in_stages_when_with_visuals_and_ran(tmp_path):
+    ctx = _ctx(tmp_path, with_store=True, with_visuals=True)
+    results = {**_all_success_results(), "store": _result("store"), "visuals": _result("visuals")}
+    s = build_pipeline_summary(ctx, results)
+    assert "visuals" in s["stages"]
+    assert s["stages"]["visuals"]["status"] == "success"
+
+
+def test_summary_visuals_skipped_when_with_visuals_but_not_in_results(tmp_path):
+    ctx = _ctx(tmp_path, with_store=True, with_visuals=True)
+    partial = {"intake": _result("intake", status="failed")}
+    s = build_pipeline_summary(ctx, partial)
+    assert s["stages"]["visuals"]["status"] == "skipped"
