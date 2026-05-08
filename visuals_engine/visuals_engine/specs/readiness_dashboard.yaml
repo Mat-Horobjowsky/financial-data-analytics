@@ -1,0 +1,36 @@
+dashboard:
+  title: "Project Readiness Dashboard"
+  description: "Readiness metrics from Metrics Engine + Analytics Store"
+  store_tables:
+    metrics: long_metrics
+    dictionary: metric_dictionary
+    validation: metrics_validation_summary
+
+sections:
+
+  - type: kpi_cards
+    title: "Key Readiness Metrics"
+    rollup_level: date_only
+    metrics:
+      - readiness_completion_pct
+      - total_requirement_count
+      - open_gap_count
+      - critical_item_count
+
+  - type: category_breakdown
+    title: "Readiness by Category"
+    rollup_level: date_category
+    segment_column: category
+    metrics:
+      - readiness_completion_pct
+      - open_gap_count
+    optional: true
+
+  - type: market_breakdown
+    title: "Readiness by Market"
+    rollup_level: date_market
+    segment_column: market
+    metrics:
+      - readiness_completion_pct
+      - open_gap_count
+    optional: true

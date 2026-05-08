@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ title }}</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: #f0f2f5;
+  color: #1a202c;
+  line-height: 1.5;
+}
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* ── Header ── */
+.header {
+  background: #1a202c;
+  padding: 36px 0 28px;
+}
+.header__title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #f7fafc;
+  letter-spacing: -0.4px;
+}
+.header__description {
+  margin-top: 6px;
+  font-size: 0.9rem;
+  color: #a0aec0;
+}
+.header__meta {
+  margin-top: 10px;
+  font-size: 0.78rem;
+  color: #718096;
+}
+
+/* ── Sections ── */
+.section {
+  padding: 32px 0 8px;
+}
+.section__title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #2d3748;
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #e2e8f0;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+/* ── KPI Cards ── */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(195px, 1fr));
+  gap: 14px;
+}
+
+.kpi-card {
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 24px 20px 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  border-top: 4px solid #e2e8f0;
+}
+.kpi-card--primary {
+  border-top-color: #3182ce;
+  background: linear-gradient(150deg, #ffffff 0%, #ebf8ff 100%);
+}
+
+.kpi-card__value {
+  font-size: 2.4rem;
+  font-weight: 700;
+  color: #1a202c;
+  line-height: 1;
+  letter-spacing: -1px;
+}
+.kpi-card--primary .kpi-card__value {
+  color: #2b6cb0;
+}
+
+.kpi-card__label {
+  margin-top: 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #718096;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.kpi-card__desc {
+  margin-top: 5px;
+  font-size: 0.78rem;
+  color: #a0aec0;
+}
+
+/* ── Breakdown table ── */
+.breakdown-table {
+  background: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  overflow: hidden;
+}
+
+.breakdown-header {
+  display: grid;
+  grid-template-columns: 150px 1fr 90px;
+  padding: 10px 20px;
+  background: #f7fafc;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #a0aec0;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.breakdown-row {
+  display: grid;
+  grid-template-columns: 150px 1fr 90px;
+  align-items: center;
+  padding: 14px 20px;
+  border-bottom: 1px solid #f0f4f8;
+}
+.breakdown-row:last-child { border-bottom: none; }
+
+.breakdown-row__name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #2d3748;
+  text-transform: capitalize;
+}
+
+.breakdown-row__bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-right: 12px;
+}
+
+.bar-track {
+  flex: 1;
+  height: 8px;
+  background: #edf2f7;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  border-radius: 4px;
+}
+
+.bar-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #2d3748;
+  min-width: 48px;
+  text-align: right;
+}
+
+.breakdown-header__count,
+.breakdown-row__count {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #4a5568;
+  text-align: center;
+}
+
+/* ── Footer ── */
+.footer {
+  background: #2d3748;
+  padding: 24px 0;
+  margin-top: 40px;
+}
+.footer__source {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #cbd5e0;
+}
+.footer__validation {
+  margin-top: 4px;
+  font-size: 0.78rem;
+  color: #a0aec0;
+}
+.footer__generated {
+  margin-top: 4px;
+  font-size: 0.75rem;
+  color: #718096;
+}
+
+/* ── Responsive ── */
+@media (max-width: 640px) {
+  .kpi-grid { grid-template-columns: 1fr 1fr; }
+  .breakdown-header,
+  .breakdown-row { grid-template-columns: 110px 1fr 64px; }
+}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="container">
+    <h1 class="header__title">{{ title }}</h1>
+    <p class="header__description">{{ description }}</p>
+    {% if as_of_date %}
+    <p class="header__meta">As of {{ as_of_date }}</p>
+    {% endif %}
+  </div>
+</header>
+
+<main>
+  <div class="container">
+
+    <!-- KPI Cards -->
+    <section class="section">
+      <h2 class="section__title">{{ kpi_section_title }}</h2>
+      <div class="kpi-grid">
+        {% for card in kpi_cards %}
+        <div class="kpi-card{% if card.is_primary %} kpi-card--primary{% endif %}">
+          <div class="kpi-card__value">{{ card.formatted_value }}</div>
+          <div class="kpi-card__label">{{ card.label }}</div>
+          {% if card.description %}
+          <div class="kpi-card__desc">{{ card.description }}</div>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <!-- Category Breakdown -->
+    {% if category_rows %}
+    <section class="section">
+      <h2 class="section__title">{{ category_section_title }}</h2>
+      <div class="breakdown-table">
+        <div class="breakdown-header">
+          <span>Category</span>
+          <span>Completion</span>
+          <span class="breakdown-header__count">Open Gaps</span>
+        </div>
+        {% for row in category_rows %}
+        <div class="breakdown-row">
+          <span class="breakdown-row__name">{{ row.name }}</span>
+          <span class="breakdown-row__bar">
+            <span class="bar-track">
+              <span class="bar-fill" style="width: {{ row.bar_width }}%; background-color: {{ row.bar_color }};"></span>
+            </span>
+            <span class="bar-label">{{ row.completion_pct_formatted }}</span>
+          </span>
+          <span class="breakdown-row__count">{{ row.open_gap_count_formatted }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    <!-- Market Breakdown -->
+    {% if market_rows %}
+    <section class="section">
+      <h2 class="section__title">{{ market_section_title }}</h2>
+      <div class="breakdown-table">
+        <div class="breakdown-header">
+          <span>Market</span>
+          <span>Completion</span>
+          <span class="breakdown-header__count">Open Gaps</span>
+        </div>
+        {% for row in market_rows %}
+        <div class="breakdown-row">
+          <span class="breakdown-row__name">{{ row.name }}</span>
+          <span class="breakdown-row__bar">
+            <span class="bar-track">
+              <span class="bar-fill" style="width: {{ row.bar_width }}%; background-color: {{ row.bar_color }};"></span>
+            </span>
+            <span class="bar-label">{{ row.completion_pct_formatted }}</span>
+          </span>
+          <span class="breakdown-row__count">{{ row.open_gap_count_formatted }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+  </div>
+</main>
+
+<footer class="footer">
+  <div class="container">
+    <p class="footer__source">Metrics Engine + Analytics Store</p>
+    {% if validation_status %}
+    <p class="footer__validation">
+      Data quality: {{ validation_status }}{% if validation_errors is not none %} &mdash; {{ validation_errors }} error{% if validation_errors != 1 %}s{% endif %}, {{ validation_warnings }} warning{% if validation_warnings != 1 %}s{% endif %}{% endif %}
+    </p>
+    {% endif %}
+    <p class="footer__generated">Generated {{ generated_at }}</p>
+  </div>
+</footer>
+
+</body>
+</html>
