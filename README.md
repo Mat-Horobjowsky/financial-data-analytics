@@ -116,7 +116,37 @@ The Analytics Pipeline supports alternate metric packs via `--metrics-config` an
 
 **Strategic wedge:** help data center occupiers, developers, brokers, and investors understand whether a project is ready to transact.
 
-### One-command readiness pipeline
+### Demo client: NovaTech Systems
+
+`examples/readiness_demo/sample_client_intake_template.xlsx` is a fictional client intake workbook. Its `PowerBI_Export` sheet contains 24 scoped requirements across 8 readiness categories (capacity, timeline, technical, market, power, commercial, capital, decision) for a NAM infrastructure project.
+
+The sheet uses a flat requirement-per-row schema that feeds directly into the readiness pipeline:
+
+```
+date | project_id | category | market | requirement_name | status | severity | notes
+```
+
+Run the demo in two steps — the Intake Engine reads the named sheet, and the Analytics Pipeline processes the clean CSV:
+
+```bash
+# Step 1 — Intake Engine reads the PowerBI_Export sheet
+intake run examples/readiness_demo/sample_client_intake_template.xlsx \
+  --sheet PowerBI_Export \
+  --output-dir outputs/demo_client/intake \
+  --validate
+
+# Step 2 — Analytics Pipeline on the clean CSV
+analytics-pipeline run \
+  --input outputs/demo_client/intake/sample_client_intake_template_powerbi_export_clean.csv \
+  --output outputs/demo_client/pipeline \
+  --metrics-config metrics_engine/config/readiness_metrics.yaml \
+  --schema-config metrics_engine/config/readiness_schema.yaml \
+  --with-visuals
+```
+
+### One-command CSV pipeline
+
+To run against the sample CSV directly (no Excel step required):
 
 ```bash
 analytics-pipeline run \
@@ -127,10 +157,10 @@ analytics-pipeline run \
   --with-visuals
 ```
 
-Runs all five stages and produces:
+Both workflows run all five stages and produce:
 
 ```
-outputs/pipeline_readiness/
+<output>/
   intake/                                  ← cleaned readiness data
   metrics/                                 ← readiness KPI tables
   report/                                  ← report against readiness metrics
@@ -151,7 +181,7 @@ outputs/pipeline_readiness/
 
 ### Dashboard output
 
-`readiness_dashboard.html` opens offline in any browser. It renders KPI cards, category breakdowns, and market breakdowns from `analytics.duckdb`. No external dependencies, no server required.
+`readiness_dashboard.html` opens offline in any browser. It renders KPI cards, category breakdowns, and market breakdowns from `analytics.duckdb`. Dashboard title, subtitle, KPI labels, and category display names are configurable in `readiness_dashboard.yaml`. No external dependencies, no server required.
 
 ---
 
@@ -424,6 +454,9 @@ The Visuals Engine closes the loop from raw data to visual output. It reads the 
 
 - Reads `analytics.duckdb` via DuckDB Python library
 - YAML dashboard spec — defines sections, metrics, rollup levels, and segment columns
+- Configurable dashboard title and subtitle in YAML spec
+- KPI label and description overrides per metric in YAML spec
+- Category display name mapping in YAML spec — human-readable labels without code changes
 - KPI cards — latest value per metric, formatted by unit
 - Category and market breakdowns — CSS progress bars, color-coded by completion percentage
 - Self-contained HTML — inline CSS, no JavaScript, works offline
@@ -497,6 +530,8 @@ Active development is focused on `intake_engine/`, `metrics_engine/`, `report_en
 - **Visuals Engine v0.1** — YAML-spec-driven HTML dashboard generator; reads `analytics.duckdb` directly; KPI cards, category and market breakdowns; self-contained offline HTML; `visuals_summary.json`
 - **Analytics Pipeline v0.2 (visuals + config flags)** — `--with-visuals` runs Visuals Engine as a fifth stage; `--metrics-config` and `--schema-config` enable any metric pack through the full pipeline; `--with-visuals` implies `--with-store`
 - **End-to-End Pipeline** — full Intake → Metrics → Report → Store → Visuals workflow on both data center KPIs and readiness metrics
+- **Readiness demo prototype** — fictional client intake workbook (`NovaTech Systems / NVT-2025-NAM`); `PowerBI_Export` sheet with flat requirement-per-row schema; Intake Engine `--sheet` flag selects the named sheet; two-step Intake → Pipeline workflow validated end-to-end
+- **Visuals Engine — dashboard polish** — configurable `title`, `subtitle`, `kpi_labels`, `kpi_descriptions`, and `category_labels` in YAML spec; client-friendly footer; human-readable KPI and category labels without code changes
 
 ### Next Priorities
 
