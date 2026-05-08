@@ -139,7 +139,7 @@ def test_output_defaults_to_outputs_store_duckdb():
         except SystemExit:
             pass
 
-    assert captured.get("db_path") == Path("outputs/store.duckdb")
+    assert captured.get("db_path") == Path("outputs/analytics.duckdb")
 
 
 # --- error propagation ---

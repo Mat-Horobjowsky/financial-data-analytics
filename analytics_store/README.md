@@ -19,7 +19,7 @@ pip install -e ".[dev]"
 analytics-store build \
   --metrics <metrics_output_dir> \
   --report <report_output_dir> \
-  --output outputs/store.duckdb
+  --output outputs/analytics.duckdb
 ```
 
 `--report` is optional. If omitted, `report_insights` and `report_summary` tables are created empty.
@@ -30,7 +30,7 @@ analytics-store build \
 |---|---|---|
 | `--metrics` | *(required)* | Metrics Engine output directory |
 | `--report` | *(none)* | Report Engine output directory (optional) |
-| `--output` | `outputs/store.duckdb` | Output DuckDB file path |
+| `--output` | `outputs/analytics.duckdb` | Output DuckDB file path |
 
 ## Output: Tables
 
@@ -58,7 +58,7 @@ cd analytics_store
 analytics-store build \
   --metrics ../metrics_engine/outputs/demo \
   --report ../report_engine/outputs/demo_full_report \
-  --output outputs/store.duckdb
+  --output outputs/analytics.duckdb
 ```
 
 Expected output:

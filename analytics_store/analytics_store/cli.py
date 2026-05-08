@@ -48,8 +48,8 @@ def main() -> None:
     build_p.add_argument("--report", default=None, help="Report Engine output directory (optional)")
     build_p.add_argument(
         "--output",
-        default="outputs/store.duckdb",
-        help="Output DuckDB file path (default: outputs/store.duckdb)",
+        default="outputs/analytics.duckdb",
+        help="Output DuckDB file path (default: outputs/analytics.duckdb)",
     )
 
     args = parser.parse_args()
