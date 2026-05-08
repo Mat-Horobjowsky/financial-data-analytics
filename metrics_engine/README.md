@@ -191,6 +191,53 @@ Time analysis is applied within each comparable group: rollup_level + segment co
 
 ---
 
+## Readiness Metrics Pack v0.1
+
+The engine ships with a second config pack for transaction-readiness and RFP-readiness analytics alongside the default market/operating config.
+
+### How it works
+
+The readiness pack uses the same pipeline and output format as market/operating metrics. Only the configs differ. Three new generic metric types are supported:
+
+| Type | Behavior |
+|---|---|
+| `count` | Row count per group — no source column required |
+| `conditional_count` | Count rows where `source_col` is in `condition_values` |
+| `completion_pct` | Count rows in `complete_values` / total rows × `scale` |
+
+These types are fully generic. The domain-specific meaning lives in the YAML config, not in engine code.
+
+### Config files
+
+| File | Purpose |
+|---|---|
+| `config/readiness_metrics.yaml` | Readiness metric definitions |
+| `config/readiness_schema.yaml` | Readiness column schema (includes `condition_columns`) |
+| `data/sample_readiness.csv` | Sample input: 20 requirements across 6 categories and 2 projects |
+
+### CLI command
+
+```
+py -m metrics_engine.cli run ^
+  --input metrics_engine/data/sample_readiness.csv ^
+  --config metrics_engine/config/readiness_metrics.yaml ^
+  --schema metrics_engine/config/readiness_schema.yaml ^
+  --output outputs/readiness
+```
+
+### Readiness metrics produced
+
+| Metric | Type | Description |
+|---|---|---|
+| `total_requirement_count` | `count` | Total requirements in scope |
+| `open_gap_count` | `conditional_count` | Requirements not yet complete |
+| `critical_item_count` | `conditional_count` | Requirements marked critical |
+| `readiness_completion_pct` | `completion_pct` | % of requirements marked complete or closed |
+
+Rollups are computed at date-only, by category, by market, and by category+market — all configured in `readiness_metrics.yaml`.
+
+---
+
 ## v1 Scope / Deferred
 
 The following are **out of scope for v1** and deferred to future versions:

@@ -1,0 +1,26 @@
+base_columns:
+  - name: date
+    type: date
+    aliases: [Date, assessment_date, report_date, Period]
+
+segment_columns:
+  - name: category
+    type: string
+    required: false
+    aliases: [Category, dimension, track]
+
+  - name: market
+    type: string
+    required: false
+    aliases: [Market, region, geo]
+
+condition_columns:
+  - name: status
+    type: string
+    required: true
+    aliases: [Status, requirement_status, readiness_status]
+
+  - name: severity
+    type: string
+    required: true
+    aliases: [Severity, priority, criticality]

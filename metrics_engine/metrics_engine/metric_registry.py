@@ -7,18 +7,24 @@ class MetricRegistryError(Exception):
     pass
 
 
-_SUPPORTED_TYPES = {"sum", "ratio", "per_unit"}
+_SUPPORTED_TYPES = {"sum", "ratio", "per_unit", "count", "conditional_count", "completion_pct"}
 _COMMON_REQUIRED = ("id", "label", "type", "unit", "decimals", "description")
 
 _TYPE_REQUIRED = {
     "sum": ("source_col",),
     "ratio": ("numerator", "denominator", "scale"),
     "per_unit": ("numerator", "denominator"),
+    "count": (),
+    "conditional_count": ("source_col", "condition_values"),
+    "completion_pct": ("source_col", "complete_values", "scale"),
 }
 _TYPE_FORBIDDEN = {
     "sum": ("numerator", "denominator"),
     "ratio": ("source_col",),
     "per_unit": ("source_col",),
+    "count": ("source_col", "numerator", "denominator", "condition_values", "complete_values"),
+    "conditional_count": ("numerator", "denominator", "complete_values"),
+    "completion_pct": ("numerator", "denominator", "condition_values"),
 }
 
 
@@ -67,6 +73,17 @@ def _validate_metric(m: dict, index: int) -> dict:
                 f"metrics[{index}] (id={m['id']!r}, type={metric_type!r}): "
                 f"field '{field}' is not allowed for type '{metric_type}'"
             )
+
+    for list_field in ("condition_values", "complete_values"):
+        if list_field in m:
+            if not isinstance(m[list_field], list):
+                raise MetricRegistryError(
+                    f"metrics[{index}] (id={m['id']!r}): '{list_field}' must be a list"
+                )
+            if not m[list_field]:
+                raise MetricRegistryError(
+                    f"metrics[{index}] (id={m['id']!r}): '{list_field}' must not be empty"
+                )
 
     return m
 

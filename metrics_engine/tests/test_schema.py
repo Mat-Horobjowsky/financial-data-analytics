@@ -258,3 +258,92 @@ def test_missing_segment_not_required(schema_path):
     })
     result = normalize(df, schema)
     assert len(result.df) == 1
+
+
+# ── condition_columns support ─────────────────────────────────────────────────
+
+def _readiness_schema():
+    return {
+        "base_columns": [
+            {"name": "date", "type": "date", "aliases": ["Date"]},
+        ],
+        "segment_columns": [
+            {"name": "category", "type": "string", "required": False, "aliases": ["Category"]},
+        ],
+        "condition_columns": [
+            {"name": "status", "type": "string", "required": True, "aliases": ["Status"]},
+            {"name": "severity", "type": "string", "required": True, "aliases": ["Severity"]},
+        ],
+    }
+
+
+def _readiness_df():
+    return pd.DataFrame({
+        "date": ["2025-01-15"],
+        "category": ["power"],
+        "status": ["complete"],
+        "severity": ["high"],
+    })
+
+
+def test_condition_columns_kept_in_df():
+    schema = _readiness_schema()
+    result = normalize(_readiness_df(), schema)
+    assert "status" in result.df.columns
+    assert "severity" in result.df.columns
+
+
+def test_condition_columns_alias_resolved():
+    schema = _readiness_schema()
+    df = pd.DataFrame({
+        "date": ["2025-01-15"],
+        "Status": ["complete"],
+        "Severity": ["high"],
+    })
+    result = normalize(df, schema)
+    assert "status" in result.df.columns
+    assert "severity" in result.df.columns
+    assert "Status" not in result.df.columns
+
+
+def test_required_condition_column_missing_raises():
+    schema = _readiness_schema()
+    df = pd.DataFrame({
+        "date": ["2025-01-15"],
+        "status": ["complete"],
+        # severity missing
+    })
+    with pytest.raises(SchemaError, match="severity"):
+        normalize(df, schema)
+
+
+def test_optional_condition_column_missing_does_not_raise():
+    schema = {
+        "base_columns": [{"name": "date", "type": "date", "aliases": []}],
+        "condition_columns": [
+            {"name": "status", "type": "string", "required": False, "aliases": []},
+        ],
+    }
+    df = pd.DataFrame({"date": ["2025-01-15"]})
+    result = normalize(df, schema)
+    assert isinstance(result, NormalizeResult)
+
+
+def test_condition_columns_not_dropped_as_unknown():
+    schema = _readiness_schema()
+    result = normalize(_readiness_df(), schema)
+    assert "status" not in result.dropped_columns
+    assert "severity" not in result.dropped_columns
+
+
+def test_string_type_column_preserved_as_string():
+    schema = _readiness_schema()
+    result = normalize(_readiness_df(), schema)
+    assert pd.api.types.is_string_dtype(result.df["status"])
+
+
+def test_schema_without_condition_columns_unchanged(schema_path, raw_df):
+    from metrics_engine.schema import load_schema
+    schema = load_schema(schema_path)
+    result = normalize(raw_df, schema)
+    assert isinstance(result, NormalizeResult)

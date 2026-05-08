@@ -12,15 +12,25 @@ class ValidationReport:
     warnings: list[str] = field(default_factory=list)
 
 
-def _required_cols(metrics: dict) -> set[str]:
+def _required_numeric_cols(metrics: dict) -> set[str]:
+    """Numeric source columns required for sum/ratio/per_unit metrics."""
     cols: set[str] = set()
     for m in metrics.values():
         t = m["type"]
         if t == "sum":
             cols.add(m["source_col"])
-        else:
+        elif t in ("ratio", "per_unit"):
             cols.add(m["numerator"])
             cols.add(m["denominator"])
+    return cols
+
+
+def _required_condition_cols(metrics: dict) -> set[str]:
+    """String source columns required for conditional_count/completion_pct metrics."""
+    cols: set[str] = set()
+    for m in metrics.values():
+        if m["type"] in ("conditional_count", "completion_pct"):
+            cols.add(m["source_col"])
     return cols
 
 
@@ -58,18 +68,24 @@ def validate(result: NormalizeResult, registry: dict) -> ValidationReport:
     metrics = registry["metrics"]
     segment_rollups = registry["segment_rollups"]
 
-    req_cols = _required_cols(metrics)
+    numeric_cols = _required_numeric_cols(metrics)
+    cond_cols = _required_condition_cols(metrics)
     denom_cols = _denominator_cols(metrics)
 
-    # Hard errors: missing metric input columns
-    missing_cols = {c for c in req_cols if c not in df.columns}
-    for col in sorted(missing_cols):
+    # Hard errors: missing numeric metric input columns
+    missing_numeric = {c for c in numeric_cols if c not in df.columns}
+    for col in sorted(missing_numeric):
         errors.append(f"Missing required metric input column: '{col}'")
 
-    present_req = req_cols - missing_cols
+    # Hard errors: missing condition columns
+    missing_cond = {c for c in cond_cols if c not in df.columns}
+    for col in sorted(missing_cond):
+        errors.append(f"Missing required condition column: '{col}'")
 
-    # Hard errors: nulls in metric inputs
-    for col in sorted(present_req):
+    present_numeric = numeric_cols - missing_numeric
+
+    # Hard errors: nulls in numeric metric inputs
+    for col in sorted(present_numeric):
         if df[col].isna().any():
             errors.append(f"Null values found in metric input column: '{col}'")
 
@@ -119,7 +135,7 @@ def validate(result: NormalizeResult, registry: dict) -> ValidationReport:
                         f"for rollup {rollup_name}; values will be aggregated."
                     )
 
-    # Warnings: leased_mw > capacity_mw
+    # Domain-specific warnings — guarded by column presence; safe for non-market data
     if "leased_mw" in df.columns and "capacity_mw" in df.columns:
         mask = df["leased_mw"] > df["capacity_mw"]
         n = int(mask.sum())
@@ -128,14 +144,13 @@ def validate(result: NormalizeResult, registry: dict) -> ValidationReport:
                 f"{n} row(s) where leased_mw exceeds capacity_mw"
             )
 
-    # Warnings: negative revenue
     if "revenue" in df.columns:
         n = int((df["revenue"] < 0).sum())
         if n > 0:
             warnings.append(f"{n} row(s) with negative revenue")
 
-    # Warnings: numeric outliers in metric input columns
-    for col in sorted(present_req):
+    # Warnings: numeric outliers in numeric metric input columns only
+    for col in sorted(present_numeric):
         if pd.api.types.is_numeric_dtype(df[col]):
             _check_outliers(df[col], col, warnings)
 

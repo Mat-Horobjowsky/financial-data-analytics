@@ -300,3 +300,96 @@ def test_aggregation_notice_wording_says_additional_rows():
     df_combined = pd.concat([df, df_extra], ignore_index=True)
     report = validate(_make_result(df_combined), _full_registry())
     assert any("additional row(s)" in w for w in report.warnings)
+
+
+# ── new metric types: validation ──────────────────────────────────────────────
+
+def _readiness_df():
+    return pd.DataFrame({
+        "date": pd.to_datetime(["2025-01-15", "2025-01-15", "2025-01-15"]),
+        "status": ["complete", "open", "in_progress"],
+        "severity": ["high", "critical", "medium"],
+    })
+
+
+def _count_registry():
+    return {
+        "metrics": {
+            "total": {
+                "id": "total", "label": "Total", "type": "count",
+                "unit": "items", "decimals": 0, "description": "total",
+            }
+        },
+        "segment_rollups": [[]],
+    }
+
+
+def _cond_registry():
+    return {
+        "metrics": {
+            "open_cnt": {
+                "id": "open_cnt", "label": "Open", "type": "conditional_count",
+                "unit": "gaps", "decimals": 0, "description": "open",
+                "source_col": "status",
+                "condition_values": ["open", "in_progress"],
+            }
+        },
+        "segment_rollups": [[]],
+    }
+
+
+def _completion_registry():
+    return {
+        "metrics": {
+            "pct": {
+                "id": "pct", "label": "Pct", "type": "completion_pct",
+                "unit": "%", "decimals": 1, "description": "pct",
+                "source_col": "status",
+                "complete_values": ["complete", "closed"],
+                "scale": 100,
+            }
+        },
+        "segment_rollups": [[]],
+    }
+
+
+def test_count_registry_clean_data_has_no_errors():
+    report = validate(_make_result(_readiness_df()), _count_registry())
+    assert report.errors == []
+
+
+def test_conditional_count_clean_data_has_no_errors():
+    report = validate(_make_result(_readiness_df()), _cond_registry())
+    assert report.errors == []
+
+
+def test_completion_pct_clean_data_has_no_errors():
+    report = validate(_make_result(_readiness_df()), _completion_registry())
+    assert report.errors == []
+
+
+def test_missing_condition_source_col_is_error():
+    df = _readiness_df().drop(columns=["status"])
+    report = validate(_make_result(df), _cond_registry())
+    assert report.status == "failed"
+    assert any("status" in e for e in report.errors)
+
+
+def test_missing_completion_source_col_is_error():
+    df = _readiness_df().drop(columns=["status"])
+    report = validate(_make_result(df), _completion_registry())
+    assert report.status == "failed"
+    assert any("status" in e for e in report.errors)
+
+
+def test_domain_checks_do_not_fire_without_market_columns():
+    report = validate(_make_result(_readiness_df()), _count_registry())
+    assert not any("leased_mw" in w for w in report.warnings)
+    assert not any("revenue" in w for w in report.warnings)
+
+
+def test_domain_check_fires_when_market_columns_present():
+    df = _base_df()
+    df.loc[0, "leased_mw"] = 99.0
+    report = validate(_make_result(df), _full_registry())
+    assert any("leased_mw" in w for w in report.warnings)

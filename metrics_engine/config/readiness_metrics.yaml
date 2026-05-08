@@ -1,0 +1,41 @@
+segment_rollups:
+  - []
+  - [category]
+  - [market]
+  - [category, market]
+
+metrics:
+  - id: total_requirement_count
+    label: Total Requirement Count
+    type: count
+    unit: requirements
+    decimals: 0
+    description: Total number of requirements in scope
+
+  - id: open_gap_count
+    label: Open Gap Count
+    type: conditional_count
+    unit: gaps
+    decimals: 0
+    description: Requirements that are not yet complete
+    source_col: status
+    condition_values: [open, in_progress, not_started]
+
+  - id: critical_item_count
+    label: Critical Item Count
+    type: conditional_count
+    unit: items
+    decimals: 0
+    description: Requirements or gaps marked critical
+    source_col: severity
+    condition_values: [critical]
+
+  - id: readiness_completion_pct
+    label: Readiness Completion %
+    type: completion_pct
+    unit: "%"
+    decimals: 1
+    description: Percentage of requirements marked complete or closed
+    source_col: status
+    complete_values: [complete, closed]
+    scale: 100

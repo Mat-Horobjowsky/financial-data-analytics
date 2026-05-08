@@ -34,7 +34,11 @@ def load_schema(schema_path: str | Path) -> dict:
 def normalize(df: pd.DataFrame, schema: dict) -> NormalizeResult:
     df = df.copy()
 
-    all_col_defs = schema.get("base_columns", []) + schema.get("segment_columns", [])
+    all_col_defs = (
+        schema.get("base_columns", [])
+        + schema.get("segment_columns", [])
+        + schema.get("condition_columns", [])
+    )
 
     # Build alias_map: normalized alias/name → standard name
     alias_map: dict[str, str] = {}
@@ -80,6 +84,17 @@ def normalize(df: pd.DataFrame, schema: dict) -> NormalizeResult:
     if missing_required:
         raise SchemaError(f"Missing required columns after alias resolution: {missing_required}")
 
+    # Check required condition columns are present
+    missing_required_conditions = [
+        col_def["name"]
+        for col_def in schema.get("condition_columns", [])
+        if col_def.get("required", True) and col_def["name"] not in df.columns
+    ]
+    if missing_required_conditions:
+        raise SchemaError(
+            f"Missing required condition columns after alias resolution: {missing_required_conditions}"
+        )
+
     # Cast types for base columns
     for col_def in schema.get("base_columns", []):
         name = col_def["name"]
@@ -96,6 +111,8 @@ def normalize(df: pd.DataFrame, schema: dict) -> NormalizeResult:
                 df[name] = pd.to_datetime(df[name], errors="raise")
             except (ValueError, TypeError) as e:
                 raise SchemaError(f"Column '{name}' cannot be parsed as dates: {e}")
+
+        # string: no casting needed; kept as-is
 
     # Track missing optional segment columns for use by calculator rollup logic
     missing_segments = [

@@ -297,3 +297,150 @@ def test_raises_calculator_error_on_missing_metric_input_col(base_df, registry):
     df = base_df.drop(columns=["revenue"])
     with pytest.raises(CalculatorError):
         calculate(df, registry)
+
+
+# ── count metric ──────────────────────────────────────────────────────────────
+
+@pytest.fixture
+def readiness_df():
+    return pd.DataFrame({
+        "date": pd.to_datetime(["2025-01-15"] * 6),
+        "category": ["power", "power", "fiber", "fiber", "permitting", "permitting"],
+        "status": ["complete", "open", "complete", "in_progress", "not_started", "closed"],
+        "severity": ["high", "critical", "medium", "high", "critical", "low"],
+    })
+
+
+def _count_reg():
+    return {
+        "metrics": {
+            "total": {
+                "id": "total", "label": "Total", "type": "count",
+                "unit": "items", "decimals": 0, "description": "total",
+            }
+        },
+        "segment_rollups": [[], ["category"]],
+    }
+
+
+def _cond_count_reg():
+    return {
+        "metrics": {
+            "open_cnt": {
+                "id": "open_cnt", "label": "Open", "type": "conditional_count",
+                "unit": "gaps", "decimals": 0, "description": "open",
+                "source_col": "status",
+                "condition_values": ["open", "in_progress", "not_started"],
+            }
+        },
+        "segment_rollups": [[], ["category"]],
+    }
+
+
+def _completion_reg():
+    return {
+        "metrics": {
+            "pct": {
+                "id": "pct", "label": "Pct", "type": "completion_pct",
+                "unit": "%", "decimals": 1, "description": "pct",
+                "source_col": "status",
+                "complete_values": ["complete", "closed"],
+                "scale": 100,
+            }
+        },
+        "segment_rollups": [[], ["category"]],
+    }
+
+
+def test_count_date_only_total(readiness_df):
+    result = calculate(readiness_df, _count_reg())
+    assert _get(result, "date_only", "2025-01-15", "total") == pytest.approx(6.0)
+
+
+def test_count_date_category_rollup(readiness_df):
+    result = calculate(readiness_df, _count_reg())
+    assert _get(result, "date_category", "2025-01-15", "total", category="power") == pytest.approx(2.0)
+    assert _get(result, "date_category", "2025-01-15", "total", category="fiber") == pytest.approx(2.0)
+
+
+def test_conditional_count_date_only(readiness_df):
+    result = calculate(readiness_df, _cond_count_reg())
+    # open, in_progress, not_started → rows 2, 4, 5 = 3
+    assert _get(result, "date_only", "2025-01-15", "open_cnt") == pytest.approx(3.0)
+
+
+def test_conditional_count_date_category(readiness_df):
+    result = calculate(readiness_df, _cond_count_reg())
+    # power: open=1; fiber: in_progress=1; permitting: not_started=1
+    assert _get(result, "date_category", "2025-01-15", "open_cnt", category="power") == pytest.approx(1.0)
+    assert _get(result, "date_category", "2025-01-15", "open_cnt", category="permitting") == pytest.approx(1.0)
+
+
+def test_conditional_count_zero_match(readiness_df):
+    reg = {
+        "metrics": {
+            "critical_cnt": {
+                "id": "critical_cnt", "label": "Critical", "type": "conditional_count",
+                "unit": "items", "decimals": 0, "description": "critical",
+                "source_col": "severity", "condition_values": ["urgent"],
+            }
+        },
+        "segment_rollups": [[]],
+    }
+    result = calculate(readiness_df, reg)
+    assert _get(result, "date_only", "2025-01-15", "critical_cnt") == pytest.approx(0.0)
+
+
+def test_completion_pct_date_only(readiness_df):
+    result = calculate(readiness_df, _completion_reg())
+    # complete (rows 0,2) + closed (row 5) = 3 out of 6 = 50.0
+    assert _get(result, "date_only", "2025-01-15", "pct") == pytest.approx(50.0)
+
+
+def test_completion_pct_date_category(readiness_df):
+    result = calculate(readiness_df, _completion_reg())
+    # power: complete/2 = 50%; fiber: complete/2 = 50%; permitting: closed/2 = 50%
+    assert _get(result, "date_category", "2025-01-15", "pct", category="power") == pytest.approx(50.0)
+    assert _get(result, "date_category", "2025-01-15", "pct", category="permitting") == pytest.approx(50.0)
+
+
+def test_completion_pct_all_complete(readiness_df):
+    df = readiness_df.copy()
+    df["status"] = "complete"
+    result = calculate(df, _completion_reg())
+    assert _get(result, "date_only", "2025-01-15", "pct") == pytest.approx(100.0)
+
+
+def test_completion_pct_none_complete(readiness_df):
+    df = readiness_df.copy()
+    df["status"] = "open"
+    result = calculate(df, _completion_reg())
+    assert _get(result, "date_only", "2025-01-15", "pct") == pytest.approx(0.0)
+
+
+def test_mixed_agg_and_count_types(readiness_df):
+    df = readiness_df.copy()
+    df["score"] = [10.0, 5.0, 8.0, 6.0, 4.0, 9.0]
+    reg = {
+        "metrics": {
+            "total_score": {
+                "id": "total_score", "label": "Score", "type": "sum",
+                "unit": "pts", "decimals": 0, "description": "score",
+                "source_col": "score",
+            },
+            "total_count": {
+                "id": "total_count", "label": "Count", "type": "count",
+                "unit": "items", "decimals": 0, "description": "count",
+            },
+        },
+        "segment_rollups": [[]],
+    }
+    result = calculate(df, reg)
+    assert _get(result, "date_only", "2025-01-15", "total_score") == pytest.approx(42.0)
+    assert _get(result, "date_only", "2025-01-15", "total_count") == pytest.approx(6.0)
+
+
+def test_raises_calculator_error_on_missing_condition_col(readiness_df):
+    df = readiness_df.drop(columns=["status"])
+    with pytest.raises(CalculatorError):
+        calculate(df, _cond_count_reg())

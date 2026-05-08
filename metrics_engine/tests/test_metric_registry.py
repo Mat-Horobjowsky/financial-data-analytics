@@ -274,3 +274,171 @@ def test_per_unit_rejects_source_col(tmp_path):
     path = _write(tmp_path, _valid_yaml(metrics=[_per_unit_metric(source_col="x")]))
     with pytest.raises(MetricRegistryError, match="source_col"):
         load_metric_registry(path)
+
+
+# ── count-type field rules ────────────────────────────────────────────────────
+
+def _count_metric(**overrides):
+    m = {
+        "id": "cnt",
+        "label": "Count",
+        "type": "count",
+        "unit": "items",
+        "decimals": 0,
+        "description": "total count",
+    }
+    m.update(overrides)
+    return m
+
+
+def test_count_metric_loads(tmp_path):
+    path = _write(tmp_path, _valid_yaml(metrics=[_count_metric()]))
+    registry = load_metric_registry(path)
+    assert "cnt" in registry["metrics"]
+
+
+def test_count_rejects_source_col(tmp_path):
+    path = _write(tmp_path, _valid_yaml(metrics=[_count_metric(source_col="status")]))
+    with pytest.raises(MetricRegistryError, match="source_col"):
+        load_metric_registry(path)
+
+
+def test_count_rejects_numerator(tmp_path):
+    path = _write(tmp_path, _valid_yaml(metrics=[_count_metric(numerator="x")]))
+    with pytest.raises(MetricRegistryError, match="numerator"):
+        load_metric_registry(path)
+
+
+def test_count_rejects_condition_values(tmp_path):
+    path = _write(tmp_path, _valid_yaml(metrics=[_count_metric(condition_values=["open"])]))
+    with pytest.raises(MetricRegistryError, match="condition_values"):
+        load_metric_registry(path)
+
+
+# ── conditional_count-type field rules ───────────────────────────────────────
+
+def _conditional_count_metric(**overrides):
+    m = {
+        "id": "open_cnt",
+        "label": "Open Count",
+        "type": "conditional_count",
+        "unit": "gaps",
+        "decimals": 0,
+        "description": "open items",
+        "source_col": "status",
+        "condition_values": ["open", "in_progress"],
+    }
+    m.update(overrides)
+    return m
+
+
+def test_conditional_count_metric_loads(tmp_path):
+    path = _write(tmp_path, _valid_yaml(metrics=[_conditional_count_metric()]))
+    registry = load_metric_registry(path)
+    assert "open_cnt" in registry["metrics"]
+
+
+def test_conditional_count_rejects_missing_source_col(tmp_path):
+    m = _conditional_count_metric()
+    del m["source_col"]
+    path = _write(tmp_path, _valid_yaml(metrics=[m]))
+    with pytest.raises(MetricRegistryError, match="source_col"):
+        load_metric_registry(path)
+
+
+def test_conditional_count_rejects_missing_condition_values(tmp_path):
+    m = _conditional_count_metric()
+    del m["condition_values"]
+    path = _write(tmp_path, _valid_yaml(metrics=[m]))
+    with pytest.raises(MetricRegistryError, match="condition_values"):
+        load_metric_registry(path)
+
+
+def test_conditional_count_rejects_empty_condition_values(tmp_path):
+    path = _write(tmp_path, _valid_yaml(metrics=[_conditional_count_metric(condition_values=[])]))
+    with pytest.raises(MetricRegistryError, match="condition_values"):
+        load_metric_registry(path)
+
+
+def test_conditional_count_rejects_non_list_condition_values(tmp_path):
+    path = _write(tmp_path, _valid_yaml(metrics=[_conditional_count_metric(condition_values="open")]))
+    with pytest.raises(MetricRegistryError, match="condition_values"):
+        load_metric_registry(path)
+
+
+def test_conditional_count_rejects_numerator(tmp_path):
+    path = _write(tmp_path, _valid_yaml(metrics=[_conditional_count_metric(numerator="x")]))
+    with pytest.raises(MetricRegistryError, match="numerator"):
+        load_metric_registry(path)
+
+
+def test_conditional_count_rejects_complete_values(tmp_path):
+    path = _write(tmp_path, _valid_yaml(metrics=[_conditional_count_metric(complete_values=["complete"])]))
+    with pytest.raises(MetricRegistryError, match="complete_values"):
+        load_metric_registry(path)
+
+
+# ── completion_pct-type field rules ──────────────────────────────────────────
+
+def _completion_pct_metric(**overrides):
+    m = {
+        "id": "pct_done",
+        "label": "Completion %",
+        "type": "completion_pct",
+        "unit": "%",
+        "decimals": 1,
+        "description": "completion percentage",
+        "source_col": "status",
+        "complete_values": ["complete", "closed"],
+        "scale": 100,
+    }
+    m.update(overrides)
+    return m
+
+
+def test_completion_pct_metric_loads(tmp_path):
+    path = _write(tmp_path, _valid_yaml(metrics=[_completion_pct_metric()]))
+    registry = load_metric_registry(path)
+    assert "pct_done" in registry["metrics"]
+
+
+def test_completion_pct_rejects_missing_source_col(tmp_path):
+    m = _completion_pct_metric()
+    del m["source_col"]
+    path = _write(tmp_path, _valid_yaml(metrics=[m]))
+    with pytest.raises(MetricRegistryError, match="source_col"):
+        load_metric_registry(path)
+
+
+def test_completion_pct_rejects_missing_complete_values(tmp_path):
+    m = _completion_pct_metric()
+    del m["complete_values"]
+    path = _write(tmp_path, _valid_yaml(metrics=[m]))
+    with pytest.raises(MetricRegistryError, match="complete_values"):
+        load_metric_registry(path)
+
+
+def test_completion_pct_rejects_missing_scale(tmp_path):
+    m = _completion_pct_metric()
+    del m["scale"]
+    path = _write(tmp_path, _valid_yaml(metrics=[m]))
+    with pytest.raises(MetricRegistryError, match="scale"):
+        load_metric_registry(path)
+
+
+def test_completion_pct_rejects_empty_complete_values(tmp_path):
+    path = _write(tmp_path, _valid_yaml(metrics=[_completion_pct_metric(complete_values=[])]))
+    with pytest.raises(MetricRegistryError, match="complete_values"):
+        load_metric_registry(path)
+
+
+def test_completion_pct_rejects_numerator(tmp_path):
+    path = _write(tmp_path, _valid_yaml(metrics=[_completion_pct_metric(numerator="x")]))
+    with pytest.raises(MetricRegistryError, match="numerator"):
+        load_metric_registry(path)
+
+
+def test_completion_pct_rejects_condition_values(tmp_path):
+    path = _write(tmp_path, _valid_yaml(metrics=[_completion_pct_metric(condition_values=["open"])]))
+    with pytest.raises(MetricRegistryError, match="condition_values"):
+        load_metric_registry(path)
