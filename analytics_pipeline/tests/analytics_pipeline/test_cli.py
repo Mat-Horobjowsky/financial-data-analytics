@@ -449,3 +449,32 @@ def test_sheet_flag_sets_arbitrary_name():
         "--sheet", "Sheet1",
     ])
     assert ctx.sheet == "Sheet1"
+
+
+# --- --with-powerbi-export flag ---
+
+
+def test_with_powerbi_export_defaults_to_false():
+    ctx = _capture_ctx(["analytics-pipeline", "run", "--input", "x.csv"])
+    assert ctx.with_powerbi_export is False
+
+
+def test_with_powerbi_export_flag_sets_context():
+    ctx = _capture_ctx([
+        "analytics-pipeline", "run", "--input", "x.csv", "--with-powerbi-export",
+    ])
+    assert ctx.with_powerbi_export is True
+
+
+def test_with_powerbi_export_implies_with_store():
+    ctx = _capture_ctx([
+        "analytics-pipeline", "run", "--input", "x.csv", "--with-powerbi-export",
+    ])
+    assert ctx.with_store is True
+
+
+def test_with_powerbi_export_does_not_imply_with_visuals():
+    ctx = _capture_ctx([
+        "analytics-pipeline", "run", "--input", "x.csv", "--with-powerbi-export",
+    ])
+    assert ctx.with_visuals is False

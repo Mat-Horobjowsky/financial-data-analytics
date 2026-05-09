@@ -8,7 +8,7 @@ from analytics_pipeline.runner import run_pipeline, run_stage
 from analytics_pipeline.stages import ACTIVE_STAGES, StageContext, StageResult
 
 
-def _ctx(tmp_path, with_time=False, template="full_report", with_store=False, with_visuals=False, metrics_config=None, schema_config=None):
+def _ctx(tmp_path, with_time=False, template="full_report", with_store=False, with_visuals=False, with_powerbi_export=False, metrics_config=None, schema_config=None):
     return StageContext(
         input_file=tmp_path / "data.csv",
         output_root=tmp_path / "out",
@@ -17,6 +17,7 @@ def _ctx(tmp_path, with_time=False, template="full_report", with_store=False, wi
         results={},
         with_store=with_store,
         with_visuals=with_visuals,
+        with_powerbi_export=with_powerbi_export,
         metrics_config=metrics_config,
         schema_config=schema_config,
     )
@@ -256,4 +257,51 @@ def test_run_pipeline_visuals_not_run_without_store(tmp_path):
     with patch("analytics_pipeline.runner.subprocess.run", return_value=_mock_proc(0)), \
          patch("analytics_pipeline.runner.ACTIVE_STAGES", _make_success_stages()):
         results = run_pipeline(ctx)
+    assert "visuals" not in results
+
+
+# --- powerbi_export stage (optional) ---
+
+
+def test_run_pipeline_skips_powerbi_export_when_flag_false(tmp_path):
+    ctx = _ctx(tmp_path, with_store=True, with_powerbi_export=False)
+    with patch("analytics_pipeline.runner.subprocess.run", return_value=_mock_proc(0)), \
+         patch("analytics_pipeline.runner.ACTIVE_STAGES", _make_success_stages()):
+        results = run_pipeline(ctx)
+    assert "powerbi_export" not in results
+
+
+def test_run_pipeline_runs_powerbi_export_when_enabled(tmp_path):
+    ctx = _ctx(tmp_path, with_store=True, with_powerbi_export=True)
+    with patch("analytics_pipeline.runner.subprocess.run", return_value=_mock_proc(0)), \
+         patch("analytics_pipeline.runner.ACTIVE_STAGES", _make_success_stages()):
+        results = run_pipeline(ctx)
+    assert "powerbi_export" in results
+    assert results["powerbi_export"].status == "success"
+
+
+def test_run_pipeline_powerbi_export_skipped_when_store_failed(tmp_path):
+    ctx = _ctx(tmp_path, with_store=True, with_powerbi_export=True)
+    call_count = [0]
+
+    def _side_effect(cmd, **kwargs):
+        call_count[0] += 1
+        if call_count[0] == 4:
+            return _mock_proc(1, "store failed")
+        return _mock_proc(0)
+
+    with patch("analytics_pipeline.runner.subprocess.run", side_effect=_side_effect), \
+         patch("analytics_pipeline.runner.ACTIVE_STAGES", _make_success_stages()):
+        results = run_pipeline(ctx)
+
+    assert results["store"].status == "failed"
+    assert "powerbi_export" not in results
+
+
+def test_run_pipeline_powerbi_export_runs_independently_of_visuals(tmp_path):
+    ctx = _ctx(tmp_path, with_store=True, with_visuals=False, with_powerbi_export=True)
+    with patch("analytics_pipeline.runner.subprocess.run", return_value=_mock_proc(0)), \
+         patch("analytics_pipeline.runner.ACTIVE_STAGES", _make_success_stages()):
+        results = run_pipeline(ctx)
+    assert "powerbi_export" in results
     assert "visuals" not in results

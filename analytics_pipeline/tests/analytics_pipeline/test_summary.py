@@ -9,7 +9,7 @@ from analytics_pipeline.stages import StageContext, StageResult
 from analytics_pipeline.summary import build_pipeline_summary, write_summary
 
 
-def _ctx(tmp_path, with_time=False, template="full_report", with_store=False, with_visuals=False):
+def _ctx(tmp_path, with_time=False, template="full_report", with_store=False, with_visuals=False, with_powerbi_export=False):
     return StageContext(
         input_file=tmp_path / "data.csv",
         output_root=tmp_path / "out",
@@ -18,6 +18,7 @@ def _ctx(tmp_path, with_time=False, template="full_report", with_store=False, wi
         results={},
         with_store=with_store,
         with_visuals=with_visuals,
+        with_powerbi_export=with_powerbi_export,
     )
 
 
@@ -265,3 +266,40 @@ def test_summary_visuals_skipped_when_with_visuals_but_not_in_results(tmp_path):
     partial = {"intake": _result("intake", status="failed")}
     s = build_pipeline_summary(ctx, partial)
     assert s["stages"]["visuals"]["status"] == "skipped"
+
+
+# --- with_powerbi_export in summary ---
+
+
+def test_summary_has_with_powerbi_export_false_by_default(tmp_path):
+    ctx = _ctx(tmp_path)
+    s = build_pipeline_summary(ctx, _all_success_results())
+    assert s["with_powerbi_export"] is False
+
+
+def test_summary_has_with_powerbi_export_true_when_set(tmp_path):
+    ctx = _ctx(tmp_path, with_store=True, with_powerbi_export=True)
+    results = {**_all_success_results(), "store": _result("store"), "powerbi_export": _result("powerbi_export")}
+    s = build_pipeline_summary(ctx, results)
+    assert s["with_powerbi_export"] is True
+
+
+def test_summary_powerbi_export_not_in_stages_when_flag_false(tmp_path):
+    ctx = _ctx(tmp_path, with_powerbi_export=False)
+    s = build_pipeline_summary(ctx, _all_success_results())
+    assert "powerbi_export" not in s["stages"]
+
+
+def test_summary_powerbi_export_in_stages_when_enabled_and_ran(tmp_path):
+    ctx = _ctx(tmp_path, with_store=True, with_powerbi_export=True)
+    results = {**_all_success_results(), "store": _result("store"), "powerbi_export": _result("powerbi_export")}
+    s = build_pipeline_summary(ctx, results)
+    assert "powerbi_export" in s["stages"]
+    assert s["stages"]["powerbi_export"]["status"] == "success"
+
+
+def test_summary_powerbi_export_skipped_when_enabled_but_not_in_results(tmp_path):
+    ctx = _ctx(tmp_path, with_store=True, with_powerbi_export=True)
+    partial = {"intake": _result("intake", status="failed")}
+    s = build_pipeline_summary(ctx, partial)
+    assert s["stages"]["powerbi_export"]["status"] == "skipped"

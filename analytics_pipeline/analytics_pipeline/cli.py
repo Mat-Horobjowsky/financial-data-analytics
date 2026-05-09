@@ -33,8 +33,9 @@ def cmd_run(args) -> None:
         with_time=args.with_time,
         template=args.template,
         results={},
-        with_store=args.with_store or args.with_visuals,
+        with_store=args.with_store or args.with_visuals or args.with_powerbi_export,
         with_visuals=args.with_visuals,
+        with_powerbi_export=args.with_powerbi_export,
         metrics_config=metrics_config,
         schema_config=schema_config,
         sheet=args.sheet,
@@ -92,6 +93,12 @@ def main() -> None:
         dest="with_visuals",
         action="store_true",
         help="Run the visuals_engine stage after store (creates readiness_dashboard.html); implies --with-store",
+    )
+    run_p.add_argument(
+        "--with-powerbi-export",
+        dest="with_powerbi_export",
+        action="store_true",
+        help="Run the Power BI CSV export stage after store; implies --with-store",
     )
     run_p.add_argument(
         "--metrics-config",

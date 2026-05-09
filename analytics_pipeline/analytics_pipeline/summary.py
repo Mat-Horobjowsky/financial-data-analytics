@@ -14,6 +14,8 @@ def build_pipeline_summary(ctx: StageContext, results: dict[str, StageResult]) -
         all_names.append("store")
     if ctx.with_visuals:
         all_names.append("visuals")
+    if ctx.with_powerbi_export:
+        all_names.append("powerbi_export")
     overall = (
         "success"
         if results and all(r.status == "success" for r in results.values())
@@ -41,6 +43,7 @@ def build_pipeline_summary(ctx: StageContext, results: dict[str, StageResult]) -
         "with_time": ctx.with_time,
         "with_store": ctx.with_store,
         "with_visuals": ctx.with_visuals,
+        "with_powerbi_export": ctx.with_powerbi_export,
         "template": ctx.template,
         "status": overall,
         "stages": stages_out,

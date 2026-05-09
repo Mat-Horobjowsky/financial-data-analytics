@@ -4,7 +4,7 @@ import dataclasses
 import subprocess
 from pathlib import Path
 
-from .stages import ACTIVE_STAGES, StageContext, StageResult, build_store_cmd, build_visuals_cmd
+from .stages import ACTIVE_STAGES, StageContext, StageResult, build_powerbi_export_cmd, build_store_cmd, build_visuals_cmd
 
 
 def run_stage(name: str, cmd: list[str], output_dir: Path) -> StageResult:
@@ -47,5 +47,10 @@ def run_pipeline(ctx: StageContext) -> dict[str, StageResult]:
         visuals_dir = ctx.output_root / "visuals"
         visuals_result = run_stage("visuals", build_visuals_cmd(ctx), visuals_dir)
         results["visuals"] = visuals_result
+
+    if ctx.with_powerbi_export and "store" in results and results["store"].status == "success":
+        powerbi_dir = ctx.output_root / "powerbi"
+        powerbi_result = run_stage("powerbi_export", build_powerbi_export_cmd(ctx), powerbi_dir)
+        results["powerbi_export"] = powerbi_result
 
     return results

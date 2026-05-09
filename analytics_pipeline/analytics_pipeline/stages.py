@@ -29,6 +29,7 @@ class StageContext:
     results: dict[str, StageResult]
     with_store: bool = False
     with_visuals: bool = False
+    with_powerbi_export: bool = False
     metrics_config: Path | None = None
     schema_config: Path | None = None
     sheet: str | None = None
@@ -117,6 +118,18 @@ def build_store_cmd(ctx: StageContext) -> list[str]:
         str(ctx.output_root / "report"),
         "--output",
         str(ctx.output_root / "store" / "analytics.duckdb"),
+    ]
+
+
+def build_powerbi_export_cmd(ctx: StageContext) -> list[str]:
+    exe = shutil.which("visuals-engine") or "visuals-engine"
+    return [
+        exe,
+        "export-powerbi",
+        "--store",
+        str(ctx.output_root / "store" / "analytics.duckdb"),
+        "--output",
+        str(ctx.output_root / "powerbi"),
     ]
 
 

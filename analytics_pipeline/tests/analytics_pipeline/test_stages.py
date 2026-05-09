@@ -12,6 +12,7 @@ from analytics_pipeline.stages import (
     _sheet_slug,
     build_intake_cmd,
     build_metrics_cmd,
+    build_powerbi_export_cmd,
     build_report_cmd,
     build_store_cmd,
     build_visuals_cmd,
@@ -509,3 +510,69 @@ def test_build_metrics_cmd_readiness_configs(tmp_path):
     cmd = build_metrics_cmd(ctx)
     assert "readiness_metrics.yaml" in cmd[cmd.index("--config") + 1]
     assert "readiness_schema.yaml" in cmd[cmd.index("--schema") + 1]
+
+
+# --- StageContext.with_powerbi_export ---
+
+
+def test_stage_context_with_powerbi_export_defaults_false(tmp_path):
+    ctx = StageContext(
+        input_file=tmp_path / "data.csv",
+        output_root=tmp_path / "out",
+        with_time=False,
+        template="full_report",
+        results={},
+    )
+    assert ctx.with_powerbi_export is False
+
+
+def test_stage_context_with_powerbi_export_true(tmp_path):
+    ctx = StageContext(
+        input_file=tmp_path / "data.csv",
+        output_root=tmp_path / "out",
+        with_time=False,
+        template="full_report",
+        results={},
+        with_powerbi_export=True,
+    )
+    assert ctx.with_powerbi_export is True
+
+
+# --- build_powerbi_export_cmd ---
+
+
+def test_build_powerbi_export_cmd_uses_visuals_engine(tmp_path):
+    ctx = _ctx(tmp_path)
+    with patch("analytics_pipeline.stages.shutil.which", return_value=None):
+        cmd = build_powerbi_export_cmd(ctx)
+    assert cmd[0] == "visuals-engine"
+
+
+def test_build_powerbi_export_cmd_uses_which_when_available(tmp_path):
+    ctx = _ctx(tmp_path)
+    with patch("analytics_pipeline.stages.shutil.which", return_value="/usr/bin/visuals-engine"):
+        cmd = build_powerbi_export_cmd(ctx)
+    assert cmd[0] == "/usr/bin/visuals-engine"
+
+
+def test_build_powerbi_export_cmd_subcommand(tmp_path):
+    ctx = _ctx(tmp_path)
+    with patch("analytics_pipeline.stages.shutil.which", return_value=None):
+        cmd = build_powerbi_export_cmd(ctx)
+    assert "export-powerbi" in cmd
+
+
+def test_build_powerbi_export_cmd_store_path(tmp_path):
+    ctx = _ctx(tmp_path)
+    with patch("analytics_pipeline.stages.shutil.which", return_value=None):
+        cmd = build_powerbi_export_cmd(ctx)
+    idx = cmd.index("--store")
+    assert cmd[idx + 1] == str(tmp_path / "out" / "store" / "analytics.duckdb")
+
+
+def test_build_powerbi_export_cmd_output_dir(tmp_path):
+    ctx = _ctx(tmp_path)
+    with patch("analytics_pipeline.stages.shutil.which", return_value=None):
+        cmd = build_powerbi_export_cmd(ctx)
+    idx = cmd.index("--output")
+    assert cmd[idx + 1] == str(tmp_path / "out" / "powerbi")
