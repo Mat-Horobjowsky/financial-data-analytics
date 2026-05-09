@@ -37,6 +37,7 @@ analytics-pipeline run \
 | `--with-visuals` | off | Run Visuals Engine after store; creates `visuals/readiness_dashboard.html`; implies `--with-store` |
 | `--metrics-config` | `metrics_engine/config/metrics.yaml` | Custom Metrics Engine config YAML (enables alternate metric packs) |
 | `--schema-config` | `metrics_engine/config/schema.yaml` | Custom Metrics Engine schema YAML |
+| `--sheet` | *(none)* | Excel sheet name passed to Intake Engine (optional, for XLSX files with multiple sheets) |
 
 ## Usage examples
 
@@ -65,6 +66,22 @@ analytics-pipeline run \
 ```
 
 Produces `outputs/pipeline_readiness/visuals/readiness_dashboard.html`.
+
+### Readiness demo from Excel workbook
+
+Use `--sheet` to select a named sheet from a multi-sheet XLSX file:
+
+```bash
+analytics-pipeline run \
+  --input examples/readiness_demo/sample_client_intake_template.xlsx \
+  --sheet PowerBI_Export \
+  --output outputs/demo_client/pipeline \
+  --metrics-config metrics_engine/config/readiness_metrics.yaml \
+  --schema-config metrics_engine/config/readiness_schema.yaml \
+  --with-visuals
+```
+
+Produces `outputs/demo_client/pipeline/visuals/readiness_dashboard.html`.
 
 ## Output structure
 

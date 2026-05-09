@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
+import re
 import shutil
 import sys
 from dataclasses import dataclass
@@ -30,11 +31,12 @@ class StageContext:
     with_visuals: bool = False
     metrics_config: Path | None = None
     schema_config: Path | None = None
+    sheet: str | None = None
 
 
 def build_intake_cmd(ctx: StageContext) -> list[str]:
     intake_exe = shutil.which("intake") or "intake"
-    return [
+    cmd = [
         intake_exe,
         "run",
         str(ctx.input_file),
@@ -42,13 +44,28 @@ def build_intake_cmd(ctx: StageContext) -> list[str]:
         str(ctx.output_root / "intake"),
         "--validate",
     ]
+    if ctx.sheet:
+        cmd.extend(["--sheet", ctx.sheet])
+    return cmd
+
+
+def _sheet_slug(sheet: str) -> str:
+    """Convert sheet name to the slug intake_engine uses in output filenames."""
+    s = sheet.strip().lower()
+    s = re.sub(r"[-\s/\.]+", "_", s)
+    s = re.sub(r"[^\w]", "", s)
+    s = re.sub(r"_+", "_", s)
+    return s.strip("_")
 
 
 def build_metrics_cmd(ctx: StageContext) -> list[str]:
     import metrics_engine as _me
 
     stem = ctx.input_file.stem
-    clean_csv = ctx.output_root / "intake" / f"{stem}_clean.csv"
+    if ctx.sheet:
+        clean_csv = ctx.output_root / "intake" / f"{stem}_{_sheet_slug(ctx.sheet)}_clean.csv"
+    else:
+        clean_csv = ctx.output_root / "intake" / f"{stem}_clean.csv"
     config_dir = Path(_me.__file__).parent.parent / "config"
 
     metrics_config = str(ctx.metrics_config) if ctx.metrics_config else str(config_dir / "metrics.yaml")

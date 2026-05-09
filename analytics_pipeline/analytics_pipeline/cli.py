@@ -37,6 +37,7 @@ def cmd_run(args) -> None:
         with_visuals=args.with_visuals,
         metrics_config=metrics_config,
         schema_config=schema_config,
+        sheet=args.sheet,
     )
 
     results = run_pipeline(ctx)
@@ -103,6 +104,11 @@ def main() -> None:
         dest="schema_config",
         default=None,
         help="Custom Metrics Engine schema YAML (default: metrics_engine/config/schema.yaml)",
+    )
+    run_p.add_argument(
+        "--sheet",
+        default=None,
+        help="Excel sheet name to pass to Intake Engine (optional, for XLSX files with multiple sheets)",
     )
 
     args = parser.parse_args()

@@ -9,6 +9,7 @@ from analytics_pipeline.stages import (
     FUTURE_STAGES,
     StageContext,
     StageResult,
+    _sheet_slug,
     build_intake_cmd,
     build_metrics_cmd,
     build_report_cmd,
@@ -25,6 +26,7 @@ def _ctx(
     with_visuals=False,
     metrics_config=None,
     schema_config=None,
+    sheet=None,
 ):
     return StageContext(
         input_file=tmp_path / "data.csv",
@@ -36,6 +38,7 @@ def _ctx(
         with_visuals=with_visuals,
         metrics_config=metrics_config,
         schema_config=schema_config,
+        sheet=sheet,
     )
 
 
@@ -118,6 +121,65 @@ def test_build_intake_cmd_falls_back_to_intake(tmp_path):
     assert cmd[0] == "intake"
 
 
+def test_build_intake_cmd_no_sheet_flag_by_default(tmp_path):
+    ctx = _ctx(tmp_path)
+    cmd = build_intake_cmd(ctx)
+    assert "--sheet" not in cmd
+
+
+def test_build_intake_cmd_sheet_flag_included_when_provided(tmp_path):
+    ctx = _ctx(tmp_path, sheet="PowerBI_Export")
+    cmd = build_intake_cmd(ctx)
+    assert "--sheet" in cmd
+    idx = cmd.index("--sheet")
+    assert cmd[idx + 1] == "PowerBI_Export"
+
+
+def test_build_intake_cmd_sheet_flag_with_arbitrary_name(tmp_path):
+    ctx = _ctx(tmp_path, sheet="Sheet1")
+    cmd = build_intake_cmd(ctx)
+    idx = cmd.index("--sheet")
+    assert cmd[idx + 1] == "Sheet1"
+
+
+# --- StageContext.sheet ---
+
+
+def test_stage_context_sheet_defaults_none(tmp_path):
+    ctx = StageContext(
+        input_file=tmp_path / "data.csv",
+        output_root=tmp_path / "out",
+        with_time=False,
+        template="full_report",
+        results={},
+    )
+    assert ctx.sheet is None
+
+
+def test_stage_context_sheet_set(tmp_path):
+    ctx = _ctx(tmp_path, sheet="PowerBI_Export")
+    assert ctx.sheet == "PowerBI_Export"
+
+
+# --- _sheet_slug ---
+
+
+def test_sheet_slug_lowercase():
+    assert _sheet_slug("PowerBI_Export") == "powerbi_export"
+
+
+def test_sheet_slug_spaces_to_underscores():
+    assert _sheet_slug("Sales Data") == "sales_data"
+
+
+def test_sheet_slug_strips_special_chars():
+    assert _sheet_slug("Q1/2024") == "q1_2024"
+
+
+def test_sheet_slug_collapses_underscores():
+    assert _sheet_slug("My  Sheet") == "my_sheet"
+
+
 # --- build_metrics_cmd ---
 
 
@@ -134,6 +196,14 @@ def test_build_metrics_cmd_input_is_clean_csv(tmp_path):
     cmd = build_metrics_cmd(ctx)
     idx = cmd.index("--input")
     expected = str(tmp_path / "out" / "intake" / "data_clean.csv")
+    assert cmd[idx + 1] == expected
+
+
+def test_build_metrics_cmd_input_includes_sheet_slug_when_sheet_set(tmp_path):
+    ctx = _ctx(tmp_path, sheet="PowerBI_Export")
+    cmd = build_metrics_cmd(ctx)
+    idx = cmd.index("--input")
+    expected = str(tmp_path / "out" / "intake" / "data_powerbi_export_clean.csv")
     assert cmd[idx + 1] == expected
 
 

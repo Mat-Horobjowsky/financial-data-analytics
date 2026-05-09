@@ -425,3 +425,27 @@ def test_schema_config_missing_file_exits_nonzero():
         except SystemExit as e:
             code = e.code
     assert code != 0
+
+
+# --- --sheet flag ---
+
+
+def test_sheet_defaults_to_none():
+    ctx = _capture_ctx(["analytics-pipeline", "run", "--input", "x.csv"])
+    assert ctx.sheet is None
+
+
+def test_sheet_flag_sets_context():
+    ctx = _capture_ctx([
+        "analytics-pipeline", "run", "--input", "x.csv",
+        "--sheet", "PowerBI_Export",
+    ])
+    assert ctx.sheet == "PowerBI_Export"
+
+
+def test_sheet_flag_sets_arbitrary_name():
+    ctx = _capture_ctx([
+        "analytics-pipeline", "run", "--input", "x.csv",
+        "--sheet", "Sheet1",
+    ])
+    assert ctx.sheet == "Sheet1"
