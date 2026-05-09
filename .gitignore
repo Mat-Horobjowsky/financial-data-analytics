@@ -53,3 +53,6 @@ archive/sql/coffee-king-project/
 archive/data_center_agent/
 
 .claude/settings.local.json
+logs/
+outputs/
+examples/
