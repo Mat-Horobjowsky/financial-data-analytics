@@ -14,6 +14,8 @@ Metrics Engine → Analytics Store → Visuals Engine → readiness_dashboard.ht
 
 ## CLI Usage
 
+### `build` — Render HTML dashboard
+
 ```bash
 visuals-engine build \
   --store outputs/readiness/analytics.duckdb \
@@ -21,13 +23,40 @@ visuals-engine build \
   --output outputs/visuals/readiness
 ```
 
-### Arguments
-
 | Argument | Required | Description |
 |----------|----------|-------------|
 | `--store` | Yes | Path to `analytics.duckdb` |
 | `--spec`  | Yes | Path to dashboard spec YAML |
 | `--output`| Yes | Output directory (created if it does not exist) |
+
+### `export-powerbi` — Export Power BI-ready CSVs
+
+Reads `analytics.duckdb` and writes clean, flat CSVs that a Power BI template can point to and refresh.
+
+```bash
+visuals-engine export-powerbi \
+  --store outputs/demo_client/pipeline/store/analytics.duckdb \
+  --output outputs/demo_client/pipeline/powerbi
+```
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `--store`  | Yes | Path to `analytics.duckdb` |
+| `--output` | Yes | Output directory for CSV files (created if it does not exist) |
+
+**Output files:**
+
+| File | Contents |
+|------|----------|
+| `readiness_kpis.csv` | One row per KPI (metric_id, label, value, unit, description) |
+| `readiness_by_category.csv` | One row per category (readiness_completion_pct, open_gap_count) |
+| `readiness_by_market.csv` | One row per market (readiness_completion_pct, open_gap_count) |
+| `validation_summary.csv` | One row — status, error_count, warning_count |
+| `metric_dictionary.csv` | Full metric dictionary for Power BI reference |
+
+Category slugs are converted to friendly labels (e.g. `capital` → `Capital Readiness`). Optional sections (category, market) write empty CSVs with headers if no data is present — Power BI loads these without errors.
+
+**Intended use:** Point a future Power BI template to the `powerbi/` folder. Each CSV becomes a named table in the model. When the pipeline reruns, the CSVs are overwritten and Power BI refreshes automatically.
 
 ## Example Output
 
@@ -76,9 +105,10 @@ To create a different dashboard, write a new spec file and pass it with `--spec`
 
 ```
 visuals_engine/
-  cli.py        argument parsing, writes HTML + JSON to --output
+  cli.py        argument parsing — build and export-powerbi subcommands
   loader.py     DuckDB queries; returns plain Python dicts
   renderer.py   transforms loaded data into Jinja2 context; renders HTML + JSON
+  exporter.py   Power BI CSV export; writes five CSVs from analytics.duckdb
   templates/
     readiness_dashboard.html   Jinja2 template (self-contained CSS, no CDN)
   specs/

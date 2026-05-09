@@ -65,3 +65,43 @@ def test_cli_build_creates_output_dir(sample_store, tmp_path):
     result = _run(["build", "--store", sample_store, "--spec", SPEC_PATH, "--output", str(out)])
     assert result.returncode == 0
     assert out.exists()
+
+
+# --- export-powerbi subcommand ---
+
+
+def test_cli_export_powerbi_exits_zero(sample_store, tmp_path):
+    result = _run(["export-powerbi", "--store", sample_store, "--output", str(tmp_path / "powerbi")])
+    assert result.returncode == 0, result.stderr
+
+
+def test_cli_export_powerbi_creates_all_csvs(sample_store, tmp_path):
+    out = tmp_path / "powerbi"
+    _run(["export-powerbi", "--store", sample_store, "--output", str(out)])
+    for fname in [
+        "readiness_kpis.csv",
+        "readiness_by_category.csv",
+        "readiness_by_market.csv",
+        "validation_summary.csv",
+        "metric_dictionary.csv",
+    ]:
+        assert (out / fname).exists(), f"Missing: {fname}"
+
+
+def test_cli_export_powerbi_creates_output_dir(sample_store, tmp_path):
+    out = tmp_path / "deep" / "nested" / "powerbi"
+    result = _run(["export-powerbi", "--store", sample_store, "--output", str(out)])
+    assert result.returncode == 0
+    assert out.exists()
+
+
+def test_cli_export_powerbi_missing_store(tmp_path):
+    result = _run(["export-powerbi", "--store", "no_such.duckdb", "--output", str(tmp_path)])
+    assert result.returncode == 1
+    assert "error" in result.stderr.lower()
+
+
+def test_cli_export_powerbi_prints_file_paths(sample_store, tmp_path):
+    result = _run(["export-powerbi", "--store", sample_store, "--output", str(tmp_path / "powerbi")])
+    assert result.returncode == 0
+    assert ".csv" in result.stdout

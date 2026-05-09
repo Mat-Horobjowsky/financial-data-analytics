@@ -18,10 +18,19 @@ def main() -> None:
     build.add_argument("--spec", required=True, help="Path to dashboard spec YAML")
     build.add_argument("--output", required=True, help="Output directory path")
 
+    export_pbi = subparsers.add_parser(
+        "export-powerbi",
+        help="Export Power BI-ready CSVs from analytics.duckdb",
+    )
+    export_pbi.add_argument("--store", required=True, help="Path to analytics.duckdb")
+    export_pbi.add_argument("--output", required=True, help="Output directory for CSV files")
+
     args = parser.parse_args()
 
     if args.command == "build":
         _run_build(args.store, args.spec, args.output)
+    elif args.command == "export-powerbi":
+        _run_export_powerbi(args.store, args.output)
 
 
 def _run_build(store_path: str, spec_path: str, output_dir: str) -> None:
@@ -62,6 +71,26 @@ def _run_build(store_path: str, spec_path: str, output_dir: str) -> None:
 
     print(f"Dashboard: {html_file}")
     print(f"Summary:   {json_file}")
+
+
+def _run_export_powerbi(store_path: str, output_dir: str) -> None:
+    from pathlib import Path as _Path
+    from . import loader, exporter
+
+    try:
+        con = loader.connect(store_path)
+    except FileNotFoundError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    try:
+        files = exporter.export_powerbi(con, _Path(output_dir))
+    finally:
+        con.close()
+
+    for f in files:
+        print(f"  {f}")
+    print(f"\nPower BI export complete: {output_dir}")
 
 
 if __name__ == "__main__":
