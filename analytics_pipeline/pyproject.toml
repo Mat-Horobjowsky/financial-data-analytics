@@ -8,10 +8,24 @@ version = "0.2.0"
 description = "Stage-based orchestrator for the Intake → Metrics → Report pipeline"
 readme = "README.md"
 requires-python = ">=3.11"
+# Runtime engines are local editable packages — they cannot be declared as PyPI
+# dependencies. Install them manually before using this package (see README
+# Prerequisites). Required engines by feature:
+#   always:               intake_engine, metrics_engine, report_engine
+#   --with-store:         analytics_store
+#   --with-visuals:       visuals_engine
+#   --with-powerbi-export: visuals_engine
 dependencies = []
 
 [project.optional-dependencies]
-dev = ["pytest>=7.0.0"]
+dev = [
+    "pytest>=7.0.0",
+    "intake_engine @ file:../intake_engine",
+    "metrics_engine @ file:../metrics_engine",
+    "report_engine @ file:../report_engine",
+    "analytics_store @ file:../analytics_store",
+    "visuals_engine @ file:../visuals_engine",
+]
 
 [project.scripts]
 analytics-pipeline = "analytics_pipeline.cli:main"

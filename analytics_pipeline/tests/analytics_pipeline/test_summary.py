@@ -9,7 +9,7 @@ from analytics_pipeline.stages import StageContext, StageResult
 from analytics_pipeline.summary import build_pipeline_summary, write_summary
 
 
-def _ctx(tmp_path, with_time=False, template="full_report", with_store=False, with_visuals=False, with_powerbi_export=False):
+def _ctx(tmp_path, with_time=False, template="full_report", with_store=False, with_visuals=False, with_powerbi_export=False, sheet=None, metrics_config=None, schema_config=None):
     return StageContext(
         input_file=tmp_path / "data.csv",
         output_root=tmp_path / "out",
@@ -19,6 +19,9 @@ def _ctx(tmp_path, with_time=False, template="full_report", with_store=False, wi
         with_store=with_store,
         with_visuals=with_visuals,
         with_powerbi_export=with_powerbi_export,
+        sheet=sheet,
+        metrics_config=metrics_config,
+        schema_config=schema_config,
     )
 
 
@@ -303,3 +306,103 @@ def test_summary_powerbi_export_skipped_when_enabled_but_not_in_results(tmp_path
     partial = {"intake": _result("intake", status="failed")}
     s = build_pipeline_summary(ctx, partial)
     assert s["stages"]["powerbi_export"]["status"] == "skipped"
+
+
+# --- sheet in summary ---
+
+
+def test_summary_sheet_is_none_by_default(tmp_path):
+    ctx = _ctx(tmp_path)
+    s = build_pipeline_summary(ctx, _all_success_results())
+    assert s["sheet"] is None
+
+
+def test_summary_sheet_recorded_when_set(tmp_path):
+    ctx = _ctx(tmp_path, sheet="PowerBI_Export")
+    s = build_pipeline_summary(ctx, _all_success_results())
+    assert s["sheet"] == "PowerBI_Export"
+
+
+# --- metrics_config_path / schema_config_path in summary ---
+
+
+def test_summary_metrics_config_path_present(tmp_path):
+    ctx = _ctx(tmp_path)
+    s = build_pipeline_summary(ctx, _all_success_results())
+    assert "metrics_config_path" in s
+
+
+def test_summary_schema_config_path_present(tmp_path):
+    ctx = _ctx(tmp_path)
+    s = build_pipeline_summary(ctx, _all_success_results())
+    assert "schema_config_path" in s
+
+
+def test_summary_metrics_config_path_uses_default_when_not_provided(tmp_path):
+    ctx = _ctx(tmp_path)
+    s = build_pipeline_summary(ctx, _all_success_results())
+    assert "metrics.yaml" in s["metrics_config_path"]
+
+
+def test_summary_schema_config_path_uses_default_when_not_provided(tmp_path):
+    ctx = _ctx(tmp_path)
+    s = build_pipeline_summary(ctx, _all_success_results())
+    assert "schema.yaml" in s["schema_config_path"]
+
+
+def test_summary_metrics_config_path_is_absolute_for_default(tmp_path):
+    import metrics_engine as _me
+    if _me.__file__ is None:
+        pytest.skip("metrics_engine.__file__ is None in this environment")
+    ctx = _ctx(tmp_path)
+    s = build_pipeline_summary(ctx, _all_success_results())
+    assert Path(s["metrics_config_path"]).is_absolute()
+
+
+def test_summary_schema_config_path_is_absolute_for_default(tmp_path):
+    import metrics_engine as _me
+    if _me.__file__ is None:
+        pytest.skip("metrics_engine.__file__ is None in this environment")
+    ctx = _ctx(tmp_path)
+    s = build_pipeline_summary(ctx, _all_success_results())
+    assert Path(s["schema_config_path"]).is_absolute()
+
+
+def test_summary_metrics_config_path_uses_custom_when_provided(tmp_path):
+    custom = tmp_path / "my_metrics.yaml"
+    custom.write_text("# custom")
+    ctx = _ctx(tmp_path, metrics_config=custom)
+    s = build_pipeline_summary(ctx, _all_success_results())
+    assert Path(s["metrics_config_path"]) == custom.resolve()
+
+
+def test_summary_schema_config_path_uses_custom_when_provided(tmp_path):
+    custom = tmp_path / "my_schema.yaml"
+    custom.write_text("# custom")
+    ctx = _ctx(tmp_path, schema_config=custom)
+    s = build_pipeline_summary(ctx, _all_success_results())
+    assert Path(s["schema_config_path"]) == custom.resolve()
+
+
+def test_summary_metrics_config_path_is_absolute_for_custom(tmp_path):
+    custom = tmp_path / "my_metrics.yaml"
+    custom.write_text("# custom")
+    ctx = _ctx(tmp_path, metrics_config=custom)
+    s = build_pipeline_summary(ctx, _all_success_results())
+    assert Path(s["metrics_config_path"]).is_absolute()
+
+
+def test_summary_readiness_config_paths_contain_correct_filenames(tmp_path):
+    """Readiness configs round-trip correctly through the summary."""
+    import metrics_engine as _me
+    if _me.__file__ is None:
+        pytest.skip("metrics_engine.__file__ is None in this environment")
+    config_dir = Path(_me.__file__).parent.parent / "config"
+    rm = config_dir / "readiness_metrics.yaml"
+    rs = config_dir / "readiness_schema.yaml"
+    if not (rm.exists() and rs.exists()):
+        pytest.skip("Readiness config files not present")
+    ctx = _ctx(tmp_path, metrics_config=rm, schema_config=rs)
+    s = build_pipeline_summary(ctx, _all_success_results())
+    assert "readiness_metrics.yaml" in s["metrics_config_path"]
+    assert "readiness_schema.yaml" in s["schema_config_path"]

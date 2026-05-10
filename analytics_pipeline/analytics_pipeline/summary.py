@@ -8,6 +8,18 @@ from analytics_pipeline import __version__
 from .stages import ACTIVE_STAGES, FUTURE_STAGES, StageContext, StageResult
 
 
+def _resolved_config_path(provided: Path | None, default_name: str) -> str:
+    """Return absolute path for a config file, falling back to the metrics_engine default."""
+    if provided is not None:
+        return str(Path(provided).resolve())
+    try:
+        import metrics_engine as _me
+        config_dir = Path(_me.__file__).parent.parent / "config"
+        return str(config_dir / default_name)
+    except Exception:
+        return default_name
+
+
 def build_pipeline_summary(ctx: StageContext, results: dict[str, StageResult]) -> dict:
     all_names = [name for name, _ in ACTIVE_STAGES]
     if ctx.with_store:
@@ -39,11 +51,14 @@ def build_pipeline_summary(ctx: StageContext, results: dict[str, StageResult]) -
         "pipeline_version": __version__,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "input_path": str(ctx.input_file),
+        "sheet": ctx.sheet,
         "output_dir": str(ctx.output_root),
         "with_time": ctx.with_time,
         "with_store": ctx.with_store,
         "with_visuals": ctx.with_visuals,
         "with_powerbi_export": ctx.with_powerbi_export,
+        "metrics_config_path": _resolved_config_path(ctx.metrics_config, "metrics.yaml"),
+        "schema_config_path": _resolved_config_path(ctx.schema_config, "schema.yaml"),
         "template": ctx.template,
         "status": overall,
         "stages": stages_out,

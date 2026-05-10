@@ -35,6 +35,7 @@ analytics-pipeline run \
 | `--template` | `full_report` | Report template (`full_report`, `executive_summary`, `metrics_detail`) |
 | `--with-store` | off | Run Analytics Store stage after report; creates `store/analytics.duckdb` |
 | `--with-visuals` | off | Run Visuals Engine after store; creates `visuals/readiness_dashboard.html`; implies `--with-store` |
+| `--with-powerbi-export` | off | Run Power BI CSV export after store; creates `powerbi/*.csv`; implies `--with-store` |
 | `--metrics-config` | `metrics_engine/config/metrics.yaml` | Custom Metrics Engine config YAML (enables alternate metric packs) |
 | `--schema-config` | `metrics_engine/config/schema.yaml` | Custom Metrics Engine schema YAML |
 | `--sheet` | *(none)* | Excel sheet name passed to Intake Engine (optional, for XLSX files with multiple sheets) |
@@ -78,10 +79,11 @@ analytics-pipeline run \
   --output outputs/demo_client/pipeline \
   --metrics-config metrics_engine/config/readiness_metrics.yaml \
   --schema-config metrics_engine/config/readiness_schema.yaml \
-  --with-visuals
+  --with-visuals \
+  --with-powerbi-export
 ```
 
-Produces `outputs/demo_client/pipeline/visuals/readiness_dashboard.html`.
+Produces `outputs/demo_client/pipeline/visuals/readiness_dashboard.html` and `outputs/demo_client/pipeline/powerbi/*.csv`.
 
 ## Output structure
 
@@ -95,83 +97,111 @@ Produces `outputs/demo_client/pipeline/visuals/readiness_dashboard.html`.
 ├── visuals/         # Visuals Engine output — only created when --with-visuals is passed
 │   ├── readiness_dashboard.html
 │   └── visuals_summary.json
+├── powerbi/         # Power BI CSV export — only created when --with-powerbi-export is passed
+│   ├── readiness_kpis.csv
+│   ├── readiness_by_category.csv
+│   ├── readiness_by_market.csv
+│   ├── validation_summary.csv
+│   └── metric_dictionary.csv
 └── pipeline_summary.json
 ```
 
 ### pipeline_summary.json
 
-Without `--with-store`:
+`pipeline_summary.json` records all inputs and resolved config paths so any run can be audited or replayed exactly.
 
 ```json
 {
   "pipeline_version": "0.2.0",
   "generated_at": "...",
-  "input_path": "...",
-  "output_dir": "...",
-  "with_time": true,
-  "with_store": false,
-  "template": "full_report",
-  "status": "success",
-  "stages": {
-    "intake":  {"status": "success", "command": "...", "output_dir": "...", "generated_files": [...]},
-    "metrics": {"status": "success", "command": "...", "output_dir": "...", "generated_files": [...]},
-    "report":  {"status": "success", "command": "...", "output_dir": "...", "generated_files": [...], "template": "full_report"}
-  },
-  "future_stages": ["store"]
-}
-```
-
-With `--with-store`:
-
-```json
-{
-  "pipeline_version": "0.2.0",
-  "with_time": true,
+  "input_path": "examples/readiness_demo/sample_client_intake_template.xlsx",
+  "sheet": "PowerBI_Export",
+  "output_dir": "outputs/demo_client/pipeline",
+  "with_time": false,
   "with_store": true,
+  "with_visuals": true,
+  "with_powerbi_export": true,
+  "metrics_config_path": "/abs/path/to/metrics_engine/config/readiness_metrics.yaml",
+  "schema_config_path": "/abs/path/to/metrics_engine/config/readiness_schema.yaml",
   "template": "full_report",
   "status": "success",
   "stages": {
-    "intake":  {"status": "success", ...},
-    "metrics": {"status": "success", ...},
-    "report":  {"status": "success", ..., "template": "full_report"},
-    "store":   {"status": "success", "output_dir": ".../store", "generated_files": ["analytics.duckdb"], "output_path": ".../store/analytics.duckdb"}
+    "intake":        {"status": "success", "command": "...", "output_dir": "...", "generated_files": [...]},
+    "metrics":       {"status": "success", ...},
+    "report":        {"status": "success", ..., "template": "full_report"},
+    "store":         {"status": "success", ..., "output_path": ".../store/analytics.duckdb"},
+    "visuals":       {"status": "success", ...},
+    "powerbi_export":{"status": "success", ...}
   },
   "future_stages": []
 }
 ```
 
+`metrics_config_path` and `schema_config_path` are always absolute paths — either the resolved custom path or the engine's built-in default.
+
 ## Prerequisites
 
-The three core engines must be installed before running the pipeline. If you intend to use `--with-store`, install `analytics_store` as well:
+All engines are local editable packages — they cannot be declared as PyPI dependencies. Install the ones you need before running the pipeline:
 
 ```bash
-cd intake_engine && pip install -e . && cd ..
-cd metrics_engine && pip install -e . && cd ..
-cd report_engine && pip install -e . && cd ..
-cd analytics_store && pip install -e . && cd ..   # only needed for --with-store
-cd analytics_pipeline && pip install -e . && cd ..
+# Always required
+pip install -e intake_engine
+pip install -e metrics_engine
+pip install -e report_engine
+
+# Required for --with-store (also implied by --with-visuals and --with-powerbi-export)
+pip install -e analytics_store
+
+# Required for --with-visuals and/or --with-powerbi-export
+pip install -e visuals_engine
+
+# Install the pipeline itself
+pip install -e analytics_pipeline
+```
+
+To install everything at once from the repo root:
+
+```bash
+pip install -e intake_engine -e metrics_engine -e report_engine -e analytics_store -e visuals_engine -e analytics_pipeline
 ```
 
 ## Setup
 
+From the **repo root**, install the pipeline and all engines into your active environment:
+
 ```bash
-cd analytics_pipeline
-pip install -e ".[dev]"
-pytest
+pip install -e "analytics_pipeline[dev]"
+```
+
+This installs `analytics_pipeline` plus all five engine packages (declared as local path dependencies under `[dev]`) and `pytest`. After that, run the test suite from the repo root:
+
+```bash
+py -m pytest analytics_pipeline/tests/
+```
+
+Expected: **173 passed, 1 skipped** (the env-gated integration test is skipped by default).
+
+To run the end-to-end readiness integration test (slower, requires all engines installed):
+
+```bash
+$env:ANALYTICS_PIPELINE_INTEGRATION_TESTS="1"   # PowerShell
+py -m pytest analytics_pipeline/tests/analytics_pipeline/test_integration_readiness.py -v
 ```
 
 ## Pipeline stages
 
 ```
-Intake Engine       (always)
+Intake Engine        (always)
     ↓
-Metrics Engine      (always — uses --metrics-config / --schema-config if provided)
+Metrics Engine       (always — uses --metrics-config / --schema-config if provided)
     ↓
-Report Engine       (always)
+Report Engine        (always)
     ↓
-Analytics Store     (optional — enabled with --with-store or implied by --with-visuals)
+Analytics Store      (optional — enabled with --with-store or implied by --with-visuals / --with-powerbi-export)
     ↓
-Visuals Engine      (optional — enabled with --with-visuals)
+Visuals Engine       (optional — enabled with --with-visuals)
+    ↓
+Power BI Export      (optional — enabled with --with-powerbi-export; independent of --with-visuals)
 ```
 
 Each stage runs only after the previous one succeeds. If any stage fails, later stages are skipped.
