@@ -16,11 +16,15 @@ sys.path.insert(0, str(DEMO_DIR))
 
 from build_powerbi_export import (
     CLIENT_CONTEXT_COLUMNS,
+    DEMO_CLIENT_VALUES,
+    DEMO_CONTEXT_DATE,
     POWERBI_EXPORT_COLUMNS,
+    apply_demo_context,
     build_powerbi_export,
     normalize_answer,
     resolve_status,
     write_client_context,
+    write_client_export_sheet,
     write_powerbi_export,
 )
 
@@ -525,3 +529,150 @@ class TestSampleWorkbookClientContext:
         assert len(rows) == 1
         for col in CLIENT_CONTEXT_COLUMNS:
             assert col in rows[0], f"Missing column: {col}"
+
+
+# ---------------------------------------------------------------------------
+# Demo context
+# ---------------------------------------------------------------------------
+
+def _run_demo_pipeline(src_path: Path, out_dir: Path) -> tuple[Path, Path]:
+    """Copy src → output, apply demo context, write PowerBI_Export + CSV.
+
+    Returns (output_workbook_path, client_context_csv_path).
+    Mirrors what main() does with --demo-context.
+    """
+    from build_powerbi_export import _read_client_export
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_wb = out_dir / "demo_output.xlsx"
+    ctx_out = out_dir / "client_context.csv"
+
+    shutil.copy2(str(src_path), str(out_wb))
+
+    wb_src = openpyxl.load_workbook(str(src_path), data_only=True)
+    src_client = _read_client_export(wb_src)
+    demo_client = apply_demo_context(src_client)
+
+    write_client_export_sheet(out_wb, demo_client)
+    rows = build_powerbi_export(out_wb)
+    write_powerbi_export(out_wb, rows)
+    write_client_context(demo_client, ctx_out)
+
+    return out_wb, ctx_out
+
+
+class TestDemoContext:
+    def test_apply_demo_context_sets_project_id(self, tmp_path):
+        """apply_demo_context overrides project_id with the demo value."""
+        base = {"project_id": "ORIGINAL", "assessment_date": date(2024, 1, 1)}
+        result = apply_demo_context(base)
+        assert result["project_id"] == "DEMO-READY-001"
+
+    def test_apply_demo_context_preserves_extra_source_fields(self, tmp_path):
+        """Source fields not in DEMO_CLIENT_VALUES are kept in the merged dict."""
+        base = {"decision_makers_identified": "yes", "project_id": "X"}
+        result = apply_demo_context(base)
+        assert result["decision_makers_identified"] == "yes"
+
+    def test_demo_pipeline_client_context_csv_has_all_columns(self, tmp_path):
+        """client_context.csv written by the demo pipeline has every CLIENT_CONTEXT_COLUMNS field."""
+        import csv as _csv
+
+        src = _make_minimal_workbook(tmp_path)
+        _, ctx_out = _run_demo_pipeline(src, tmp_path / "out")
+
+        with open(ctx_out, newline="", encoding="utf-8") as f:
+            rows = list(_csv.DictReader(f))
+        assert len(rows) == 1
+        for col in CLIENT_CONTEXT_COLUMNS:
+            assert col in rows[0], f"Missing column in client_context.csv: {col}"
+
+    def test_demo_pipeline_client_context_csv_has_expected_values(self, tmp_path):
+        """Spot-check that all DEMO_CLIENT_VALUES keys land in client_context.csv correctly."""
+        import csv as _csv
+
+        src = _make_minimal_workbook(tmp_path)
+        _, ctx_out = _run_demo_pipeline(src, tmp_path / "out")
+
+        with open(ctx_out, newline="", encoding="utf-8") as f:
+            row = list(_csv.DictReader(f))[0]
+
+        assert row["project_id"] == "DEMO-READY-001"
+        assert row["client_name"] == "Demo AI Infrastructure Co."
+        assert row["project_name"] == "Midwest AI Campus Requirement"
+        assert row["project_type"] == "AI training campus"
+        assert row["buyer_profile"] == "Occupier"
+        assert row["target_market"] == "Midwest"
+        assert row["target_region"] == "Missouri / Central US"
+        assert row["target_capacity_mw"] == "250"
+        assert row["target_rack_density_kw"] == "50"
+        assert row["target_live_date"] == "2027-12-31"
+        assert row["readiness_stage"] == "Pre-RFP / requirement definition"
+        assert row["primary_use_case"] == "Large-scale AI training and inference"
+        assert row["prepared_for"] == "Internal investment committee"
+        assert row["prepared_by"] == "Financial Data Analytics prototype"
+        assert row["prepared_date"] == DEMO_CONTEXT_DATE.isoformat()
+        assert row["version"] == "v0.1 demo"
+        assert row["confidentiality"] == "Demo only"
+        assert "ready to transact" in row["executive_summary"]
+        assert "RFP" in row["key_decision_question"]
+
+    def test_demo_pipeline_output_workbook_client_export_has_demo_values(self, tmp_path):
+        """The generated workbook's Client_Export sheet contains demo field values."""
+        src = _make_minimal_workbook(tmp_path)
+        out_wb, _ = _run_demo_pipeline(src, tmp_path / "out")
+
+        wb = openpyxl.load_workbook(str(out_wb), data_only=True)
+        assert "Client_Export" in wb.sheetnames
+        ws = wb["Client_Export"]
+        rows_raw = list(ws.iter_rows(values_only=True))
+        headers = [str(h) if h is not None else "" for h in rows_raw[0]]
+        values = dict(zip(headers, rows_raw[1]))
+
+        assert values.get("project_id") == "DEMO-READY-001"
+        assert values.get("client_name") == "Demo AI Infrastructure Co."
+        assert values.get("target_market") == "Midwest"
+
+    def test_demo_pipeline_powerbi_export_uses_demo_project_id(self, tmp_path):
+        """PowerBI_Export rows in the generated workbook carry the demo project_id."""
+        src = _make_minimal_workbook(tmp_path)
+        out_wb, _ = _run_demo_pipeline(src, tmp_path / "out")
+
+        wb = openpyxl.load_workbook(str(out_wb), data_only=True)
+        ws = wb["PowerBI_Export"]
+        pbi_rows = list(ws.iter_rows(min_row=2, values_only=True))
+        data_rows = [r for r in pbi_rows if any(v is not None for v in r)]
+        assert len(data_rows) > 0
+        pid_col = POWERBI_EXPORT_COLUMNS.index("project_id")
+        for r in data_rows:
+            assert r[pid_col] == "DEMO-READY-001", f"Expected DEMO-READY-001, got {r[pid_col]!r}"
+
+    def test_demo_pipeline_source_workbook_not_modified(self, tmp_path):
+        """The source workbook byte-for-byte unchanged after the demo pipeline runs."""
+        src = _make_minimal_workbook(tmp_path)
+        original_hash = _file_md5(src)
+
+        _run_demo_pipeline(src, tmp_path / "out")
+
+        assert _file_md5(src) == original_hash, "Source workbook was modified by demo pipeline!"
+
+    def test_without_demo_context_behavior_unchanged(self, tmp_path):
+        """Without --demo-context the original project_id from the source is used."""
+        import csv as _csv
+
+        src = _make_minimal_workbook(tmp_path, project_id="ORIGINAL-001")
+        out_wb = tmp_path / "normal_output.xlsx"
+        ctx_out = tmp_path / "client_context.csv"
+
+        shutil.copy2(str(src), str(out_wb))
+        rows = build_powerbi_export(src)
+        write_powerbi_export(out_wb, rows)
+
+        from build_powerbi_export import _read_client_export
+        wb = openpyxl.load_workbook(str(src), data_only=True)
+        client = _read_client_export(wb)
+        write_client_context(client, ctx_out)
+
+        with open(ctx_out, newline="", encoding="utf-8") as f:
+            row = list(_csv.DictReader(f))[0]
+        assert row["project_id"] == "ORIGINAL-001"
