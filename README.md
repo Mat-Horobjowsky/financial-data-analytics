@@ -118,7 +118,7 @@ The Analytics Pipeline supports alternate metric packs via `--metrics-config` an
 
 ### Demo client: NovaTech Systems
 
-`examples/readiness_demo/sample_client_intake_template.xlsx` is a fictional client intake workbook. Its `PowerBI_Export` sheet contains 24 scoped requirements across 8 readiness categories (capacity, timeline, technical, market, power, commercial, capital, decision) for a NAM infrastructure project.
+`examples/readiness_demo/client_intake_template.xlsx` is the reusable client intake workbook for the readiness demo workflow. Its `PowerBI_Export` sheet contains 24 scoped requirements across 8 readiness categories (capacity, timeline, technical, market, power, commercial, capital, decision) for a NAM infrastructure project.
 
 The sheet uses a flat requirement-per-row schema that feeds directly into the readiness pipeline:
 
@@ -130,14 +130,14 @@ Run the demo in two steps — the Intake Engine reads the named sheet, and the A
 
 ```bash
 # Step 1 — Intake Engine reads the PowerBI_Export sheet
-intake run examples/readiness_demo/sample_client_intake_template.xlsx \
+intake run examples/readiness_demo/client_intake_template.xlsx \
   --sheet PowerBI_Export \
   --output-dir outputs/demo_client/intake \
   --validate
 
 # Step 2 — Analytics Pipeline on the clean CSV
 analytics-pipeline run \
-  --input outputs/demo_client/intake/sample_client_intake_template_powerbi_export_clean.csv \
+  --input outputs/demo_client/intake/client_intake_template_powerbi_export_clean.csv \
   --output outputs/demo_client/pipeline \
   --metrics-config metrics_engine/config/readiness_metrics.yaml \
   --schema-config metrics_engine/config/readiness_schema.yaml \

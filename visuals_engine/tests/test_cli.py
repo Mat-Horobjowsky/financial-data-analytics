@@ -105,3 +105,51 @@ def test_cli_export_powerbi_prints_file_paths(sample_store, tmp_path):
     result = _run(["export-powerbi", "--store", sample_store, "--output", str(tmp_path / "powerbi")])
     assert result.returncode == 0
     assert ".csv" in result.stdout
+
+
+# --- export-powerbi --client-context ---
+
+
+def _make_client_context_csv(path) -> str:
+    import csv
+    from pathlib import Path as _P
+    p = _P(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    with open(p, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=["project_id", "client_name"])
+        writer.writeheader()
+        writer.writerow({"project_id": "CLI-001", "client_name": "CLI Corp"})
+    return str(p)
+
+
+def test_cli_export_powerbi_with_client_context_exits_zero(sample_store, tmp_path):
+    ctx = _make_client_context_csv(tmp_path / "client_context.csv")
+    result = _run([
+        "export-powerbi", "--store", sample_store,
+        "--output", str(tmp_path / "powerbi"),
+        "--client-context", ctx,
+    ])
+    assert result.returncode == 0, result.stderr
+
+
+def test_cli_export_powerbi_with_client_context_creates_csv(sample_store, tmp_path):
+    ctx = _make_client_context_csv(tmp_path / "client_context.csv")
+    out = tmp_path / "powerbi"
+    _run(["export-powerbi", "--store", sample_store, "--output", str(out), "--client-context", ctx])
+    assert (out / "client_context.csv").exists()
+
+
+def test_cli_export_powerbi_missing_client_context_file_exits_nonzero(sample_store, tmp_path):
+    result = _run([
+        "export-powerbi", "--store", sample_store,
+        "--output", str(tmp_path / "powerbi"),
+        "--client-context", str(tmp_path / "no_such.csv"),
+    ])
+    assert result.returncode == 1
+    assert "error" in result.stderr.lower()
+
+
+def test_cli_export_powerbi_without_client_context_still_passes(sample_store, tmp_path):
+    result = _run(["export-powerbi", "--store", sample_store, "--output", str(tmp_path / "powerbi")])
+    assert result.returncode == 0
+    assert not (tmp_path / "powerbi" / "client_context.csv").exists()

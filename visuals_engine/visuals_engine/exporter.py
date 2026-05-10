@@ -119,8 +119,19 @@ def _export_metric_dictionary(con: duckdb.DuckDBPyConnection, output_dir: Path) 
     _write_csv(output_dir / "metric_dictionary.csv", rows, fieldnames)
 
 
-def export_powerbi(con: duckdb.DuckDBPyConnection, output_dir: Path) -> list[str]:
-    """Export Power BI-ready CSVs from analytics.duckdb. Returns list of created file paths."""
+def export_powerbi(
+    con: duckdb.DuckDBPyConnection,
+    output_dir: Path,
+    client_context_path: Path | None = None,
+) -> list[str]:
+    """Export Power BI-ready CSVs from analytics.duckdb. Returns list of created file paths.
+
+    If client_context_path is provided and exists, it is copied into output_dir as
+    client_context.csv and included in the returned file list (six files total).
+    When omitted, behavior is unchanged (five files).
+    """
+    import shutil as _shutil
+
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -137,4 +148,13 @@ def export_powerbi(con: duckdb.DuckDBPyConnection, output_dir: Path) -> list[str
         "validation_summary.csv",
         "metric_dictionary.csv",
     ]
+
+    if client_context_path is not None:
+        src = Path(client_context_path)
+        if not src.exists():
+            raise FileNotFoundError(f"client_context file not found: {src}")
+        dest = output_dir / "client_context.csv"
+        _shutil.copy2(str(src), str(dest))
+        files.append("client_context.csv")
+
     return [str(output_dir / f) for f in files]

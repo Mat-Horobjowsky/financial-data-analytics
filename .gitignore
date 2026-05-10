@@ -55,5 +55,7 @@ archive/data_center_agent/
 .claude/settings.local.json
 logs/
 outputs/
-examples/
+examples/**
+!examples/readiness_demo/
+!examples/readiness_demo/**
 powerbi/

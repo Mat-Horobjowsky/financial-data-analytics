@@ -1,0 +1,7 @@
+# Private workbooks and client files
+*.xlsx
+*.xlsm
+*.csv
+
+# Python cache
+__pycache__/

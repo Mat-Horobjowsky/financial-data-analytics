@@ -19,12 +19,16 @@ def cmd_run(args) -> None:
 
     metrics_config = Path(args.metrics_config) if args.metrics_config else None
     schema_config = Path(args.schema_config) if args.schema_config else None
+    client_context = Path(args.client_context) if args.client_context else None
 
     if metrics_config and not metrics_config.exists():
         print(f"Error: metrics config not found: {metrics_config}", file=sys.stderr)
         sys.exit(1)
     if schema_config and not schema_config.exists():
         print(f"Error: schema config not found: {schema_config}", file=sys.stderr)
+        sys.exit(1)
+    if client_context and not client_context.exists():
+        print(f"Error: client context file not found: {client_context}", file=sys.stderr)
         sys.exit(1)
 
     ctx = StageContext(
@@ -39,6 +43,7 @@ def cmd_run(args) -> None:
         metrics_config=metrics_config,
         schema_config=schema_config,
         sheet=args.sheet,
+        client_context_path=client_context,
     )
 
     results = run_pipeline(ctx)
@@ -116,6 +121,12 @@ def main() -> None:
         "--sheet",
         default=None,
         help="Excel sheet name to pass to Intake Engine (optional, for XLSX files with multiple sheets)",
+    )
+    run_p.add_argument(
+        "--client-context",
+        dest="client_context",
+        default=None,
+        help="Optional path to client_context.csv; copied into powerbi/ when --with-powerbi-export is used",
     )
 
     args = parser.parse_args()

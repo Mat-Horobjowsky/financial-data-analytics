@@ -478,3 +478,38 @@ def test_with_powerbi_export_does_not_imply_with_visuals():
         "analytics-pipeline", "run", "--input", "x.csv", "--with-powerbi-export",
     ])
     assert ctx.with_visuals is False
+
+
+# --- --client-context flag ---
+
+
+def test_client_context_defaults_to_none():
+    ctx = _capture_ctx(["analytics-pipeline", "run", "--input", "x.csv"])
+    assert ctx.client_context_path is None
+
+
+def test_client_context_flag_sets_context():
+    ctx = _capture_ctx([
+        "analytics-pipeline", "run", "--input", "x.csv",
+        "--client-context", "client_context.csv",
+    ])
+    assert ctx.client_context_path == Path("client_context.csv")
+
+
+def test_client_context_missing_file_exits_nonzero():
+    from analytics_pipeline import cli
+
+    def _exists(self):
+        return str(self) != "missing_client_context.csv"
+
+    with patch.object(Path, "exists", _exists), \
+         patch("sys.argv", [
+             "analytics-pipeline", "run", "--input", "x.csv",
+             "--client-context", "missing_client_context.csv",
+         ]):
+        try:
+            cli.main()
+            code = 0
+        except SystemExit as e:
+            code = e.code
+    assert code != 0

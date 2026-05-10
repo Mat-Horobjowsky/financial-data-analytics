@@ -33,6 +33,7 @@ class StageContext:
     metrics_config: Path | None = None
     schema_config: Path | None = None
     sheet: str | None = None
+    client_context_path: Path | None = None
 
 
 def build_intake_cmd(ctx: StageContext) -> list[str]:
@@ -123,7 +124,7 @@ def build_store_cmd(ctx: StageContext) -> list[str]:
 
 def build_powerbi_export_cmd(ctx: StageContext) -> list[str]:
     exe = shutil.which("visuals-engine") or "visuals-engine"
-    return [
+    cmd = [
         exe,
         "export-powerbi",
         "--store",
@@ -131,6 +132,9 @@ def build_powerbi_export_cmd(ctx: StageContext) -> list[str]:
         "--output",
         str(ctx.output_root / "powerbi"),
     ]
+    if ctx.client_context_path is not None:
+        cmd.extend(["--client-context", str(ctx.client_context_path)])
+    return cmd
 
 
 def build_visuals_cmd(ctx: StageContext) -> list[str]:

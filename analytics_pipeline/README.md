@@ -74,7 +74,7 @@ Use `--sheet` to select a named sheet from a multi-sheet XLSX file:
 
 ```bash
 analytics-pipeline run \
-  --input examples/readiness_demo/sample_client_intake_template.xlsx \
+  --input examples/readiness_demo/client_intake_template.xlsx \
   --sheet PowerBI_Export \
   --output outputs/demo_client/pipeline \
   --metrics-config metrics_engine/config/readiness_metrics.yaml \
@@ -114,7 +114,7 @@ Produces `outputs/demo_client/pipeline/visuals/readiness_dashboard.html` and `ou
 {
   "pipeline_version": "0.2.0",
   "generated_at": "...",
-  "input_path": "examples/readiness_demo/sample_client_intake_template.xlsx",
+  "input_path": "examples/readiness_demo/client_intake_template.xlsx",
   "sheet": "PowerBI_Export",
   "output_dir": "outputs/demo_client/pipeline",
   "with_time": false,

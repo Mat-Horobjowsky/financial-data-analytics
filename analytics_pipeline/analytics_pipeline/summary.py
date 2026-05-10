@@ -59,6 +59,7 @@ def build_pipeline_summary(ctx: StageContext, results: dict[str, StageResult]) -
         "with_powerbi_export": ctx.with_powerbi_export,
         "metrics_config_path": _resolved_config_path(ctx.metrics_config, "metrics.yaml"),
         "schema_config_path": _resolved_config_path(ctx.schema_config, "schema.yaml"),
+        "client_context_path": str(ctx.client_context_path) if ctx.client_context_path else None,
         "template": ctx.template,
         "status": overall,
         "stages": stages_out,

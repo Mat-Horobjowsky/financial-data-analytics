@@ -576,3 +576,46 @@ def test_build_powerbi_export_cmd_output_dir(tmp_path):
         cmd = build_powerbi_export_cmd(ctx)
     idx = cmd.index("--output")
     assert cmd[idx + 1] == str(tmp_path / "out" / "powerbi")
+
+
+# --- StageContext.client_context_path ---
+
+
+def test_stage_context_client_context_defaults_none(tmp_path):
+    ctx = _ctx(tmp_path)
+    assert ctx.client_context_path is None
+
+
+def test_stage_context_client_context_set(tmp_path):
+    ctx = StageContext(
+        input_file=tmp_path / "data.csv",
+        output_root=tmp_path / "out",
+        with_time=False,
+        template="full_report",
+        results={},
+        client_context_path=tmp_path / "client_context.csv",
+    )
+    assert ctx.client_context_path == tmp_path / "client_context.csv"
+
+
+def test_build_powerbi_export_cmd_includes_client_context_when_set(tmp_path):
+    ctx = StageContext(
+        input_file=tmp_path / "data.csv",
+        output_root=tmp_path / "out",
+        with_time=False,
+        template="full_report",
+        results={},
+        client_context_path=tmp_path / "client_context.csv",
+    )
+    with patch("analytics_pipeline.stages.shutil.which", return_value=None):
+        cmd = build_powerbi_export_cmd(ctx)
+    assert "--client-context" in cmd
+    idx = cmd.index("--client-context")
+    assert cmd[idx + 1] == str(tmp_path / "client_context.csv")
+
+
+def test_build_powerbi_export_cmd_no_client_context_flag_when_none(tmp_path):
+    ctx = _ctx(tmp_path)
+    with patch("analytics_pipeline.stages.shutil.which", return_value=None):
+        cmd = build_powerbi_export_cmd(ctx)
+    assert "--client-context" not in cmd

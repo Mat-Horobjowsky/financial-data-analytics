@@ -6,8 +6,9 @@ To run:
 
     ANALYTICS_PIPELINE_INTEGRATION_TESTS=1 py -m pytest analytics_pipeline/tests/analytics_pipeline/test_integration_readiness.py -v
 
-The test runs the real pipeline against the readiness demo workbook and asserts
-all expected output files are produced.
+The test follows the two-step readiness demo workflow:
+  1. generate client_intake_template_generated.xlsx from the source template
+  2. run the full pipeline on the generated workbook
 """
 from __future__ import annotations
 
@@ -21,6 +22,7 @@ from pathlib import Path
 import pytest
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
+_DEMO_DIR = _REPO_ROOT / "examples" / "readiness_demo"
 
 INTEGRATION = os.environ.get("ANALYTICS_PIPELINE_INTEGRATION_TESTS", "").lower() in ("1", "true", "yes")
 
@@ -31,13 +33,36 @@ pytestmark = pytest.mark.skipif(
 
 
 def test_readiness_full_pipeline(tmp_path):
-    input_file = _REPO_ROOT / "examples" / "readiness_demo" / "sample_client_intake_template.xlsx"
+    source_template = _DEMO_DIR / "client_intake_template.xlsx"
     metrics_config = _REPO_ROOT / "metrics_engine" / "config" / "readiness_metrics.yaml"
     schema_config = _REPO_ROOT / "metrics_engine" / "config" / "readiness_schema.yaml"
-    out = tmp_path / "pipeline"
 
-    for p in (input_file, metrics_config, schema_config):
+    for p in (source_template, metrics_config, schema_config):
         assert p.exists(), f"Fixture not found: {p}"
+
+    # Step 1: generate PowerBI_Export rows from Requirement_Map + Client_Export
+    generated_workbook = tmp_path / "client_intake_template_generated.xlsx"
+    gen_result = subprocess.run(
+        [
+            sys.executable,
+            str(_DEMO_DIR / "build_powerbi_export.py"),
+            "--workbook", str(source_template),
+            "--output", str(generated_workbook),
+        ],
+        capture_output=True,
+        text=True,
+        cwd=str(_REPO_ROOT),
+    )
+    assert gen_result.returncode == 0, (
+        f"build_powerbi_export.py exited with {gen_result.returncode}\n"
+        f"--- stdout ---\n{gen_result.stdout}\n"
+        f"--- stderr ---\n{gen_result.stderr}"
+    )
+    assert generated_workbook.exists(), "Generator did not create output workbook"
+
+    # Step 2: run full pipeline on generated workbook
+    input_file = generated_workbook
+    out = tmp_path / "pipeline"
 
     pipeline_exe = shutil.which("analytics-pipeline") or "analytics-pipeline"
     result = subprocess.run(

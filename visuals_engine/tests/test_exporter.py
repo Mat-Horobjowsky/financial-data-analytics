@@ -52,6 +52,73 @@ def test_export_powerbi_returns_five_paths(sample_store, tmp_path):
     assert all(p.endswith(".csv") for p in paths)
 
 
+# --- client_context.csv ---
+
+
+def _make_client_context_csv(path: Path) -> Path:
+    """Write a minimal client_context.csv fixture."""
+    import csv
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=["project_id", "client_name", "assessment_date"])
+        writer.writeheader()
+        writer.writerow({"project_id": "TEST-001", "client_name": "Acme", "assessment_date": "2025-09-15"})
+    return path
+
+
+def test_export_powerbi_with_client_context_returns_six_paths(sample_store, tmp_path):
+    ctx = _make_client_context_csv(tmp_path / "client_context.csv")
+    con = _open(sample_store)
+    try:
+        paths = export_powerbi(con, tmp_path / "powerbi", client_context_path=ctx)
+    finally:
+        con.close()
+    assert len(paths) == 6
+    assert any(p.endswith("client_context.csv") for p in paths)
+
+
+def test_export_powerbi_with_client_context_creates_csv_in_output(sample_store, tmp_path):
+    ctx = _make_client_context_csv(tmp_path / "client_context.csv")
+    con = _open(sample_store)
+    try:
+        export_powerbi(con, tmp_path / "powerbi", client_context_path=ctx)
+    finally:
+        con.close()
+    assert (tmp_path / "powerbi" / "client_context.csv").exists()
+
+
+def test_export_powerbi_with_client_context_preserves_contents(sample_store, tmp_path):
+    ctx = _make_client_context_csv(tmp_path / "client_context.csv")
+    con = _open(sample_store)
+    try:
+        export_powerbi(con, tmp_path / "powerbi", client_context_path=ctx)
+    finally:
+        con.close()
+    rows = _read_csv(tmp_path / "powerbi" / "client_context.csv")
+    assert len(rows) == 1
+    assert rows[0]["project_id"] == "TEST-001"
+    assert rows[0]["client_name"] == "Acme"
+
+
+def test_export_powerbi_without_client_context_still_returns_five_paths(sample_store, tmp_path):
+    con = _open(sample_store)
+    try:
+        paths = export_powerbi(con, tmp_path / "powerbi")
+    finally:
+        con.close()
+    assert len(paths) == 5
+    assert not any("client_context" in p for p in paths)
+
+
+def test_export_powerbi_with_missing_client_context_raises(sample_store, tmp_path):
+    con = _open(sample_store)
+    try:
+        with pytest.raises(FileNotFoundError, match="client_context"):
+            export_powerbi(con, tmp_path / "powerbi", client_context_path=tmp_path / "no_such.csv")
+    finally:
+        con.close()
+
+
 # --- readiness_kpis.csv ---
 
 
