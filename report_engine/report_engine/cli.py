@@ -11,10 +11,10 @@ from report_engine.html import render_html
 from report_engine.insights import build_insights, has_period_data
 from report_engine.renderer import render_markdown
 
-_OUTPUT_FILES = ["report.md", "report.html", "summary.json", "insights.json"]
+_BASE_OUTPUT_FILES = ["report.md", "report.html", "summary.json", "insights.json"]
 
 
-def _build_summary(data: loader.ReportData, template_name: str) -> dict:
+def _build_summary(data: loader.ReportData, template_name: str, generated_files: list[str]) -> dict:
     summary: dict = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "input_dir": str(data.input_dir),
@@ -34,7 +34,7 @@ def _build_summary(data: loader.ReportData, template_name: str) -> dict:
             summary["metric_count"] = int(df["metric_id"].nunique())
         if "rollup_level" in df.columns:
             summary["rollup_levels"] = sorted(df["rollup_level"].dropna().unique().tolist())
-    summary["generated_files"] = _OUTPUT_FILES
+    summary["generated_files"] = generated_files
     return summary
 
 
@@ -57,10 +57,19 @@ def cmd_build(args) -> None:
         "insights": insights,
     }
 
+    html_content = render_html(data, sections=sections)
     (out / "report.md").write_text(render_markdown(data, sections=sections), encoding="utf-8")
-    (out / "report.html").write_text(render_html(data, sections=sections), encoding="utf-8")
+    (out / "report.html").write_text(html_content, encoding="utf-8")
+
+    generated_files = list(_BASE_OUTPUT_FILES)
+
+    if args.pdf:
+        from report_engine.pdf import render_pdf
+        render_pdf(html_content, out / "report.pdf")
+        generated_files.append("report.pdf")
+
     (out / "summary.json").write_text(
-        json.dumps(_build_summary(data, args.template), indent=2),
+        json.dumps(_build_summary(data, args.template, generated_files), indent=2),
         encoding="utf-8",
     )
     (out / "insights.json").write_text(
@@ -69,7 +78,7 @@ def cmd_build(args) -> None:
     )
 
     print(f"Report written to: {out.resolve()}")
-    for fname in _OUTPUT_FILES:
+    for fname in generated_files:
         print(f"  {fname}")
 
 
@@ -92,6 +101,12 @@ def main() -> None:
         default=templates.DEFAULT_TEMPLATE,
         choices=templates.VALID_TEMPLATES,
         help=f"Report template (default: {templates.DEFAULT_TEMPLATE})",
+    )
+    build_p.add_argument(
+        "--pdf",
+        action="store_true",
+        default=False,
+        help="Also generate report.pdf from the rendered HTML",
     )
 
     args = parser.parse_args()

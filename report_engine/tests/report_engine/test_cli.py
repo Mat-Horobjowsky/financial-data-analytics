@@ -295,3 +295,41 @@ def test_build_summary_json_written_for_metrics_detail(valid_input_dir, tmp_path
     out = tmp_path / "out"
     _cli("build", "--input", str(valid_input_dir), "--output", str(out), "--template", "metrics_detail")
     assert (out / "summary.json").exists()
+
+
+# ── PDF flag tests ─────────────────────────────────────────────────────────────
+
+def test_build_no_pdf_flag_does_not_create_pdf(valid_input_dir, tmp_path):
+    out = tmp_path / "out"
+    _cli("build", "--input", str(valid_input_dir), "--output", str(out))
+    assert not (out / "report.pdf").exists()
+
+
+def test_build_pdf_flag_creates_report_pdf(valid_input_dir, tmp_path):
+    out = tmp_path / "out"
+    result = _cli("build", "--input", str(valid_input_dir), "--output", str(out), "--pdf")
+    assert result.returncode == 0
+    assert (out / "report.pdf").exists()
+
+
+def test_build_pdf_flag_existing_outputs_still_exist(valid_input_dir, tmp_path):
+    out = tmp_path / "out"
+    _cli("build", "--input", str(valid_input_dir), "--output", str(out), "--pdf")
+    assert (out / "report.md").exists()
+    assert (out / "report.html").exists()
+    assert (out / "summary.json").exists()
+    assert (out / "insights.json").exists()
+
+
+def test_build_pdf_flag_summary_includes_report_pdf(valid_input_dir, tmp_path):
+    out = tmp_path / "out"
+    _cli("build", "--input", str(valid_input_dir), "--output", str(out), "--pdf")
+    data = json.loads((out / "summary.json").read_text(encoding="utf-8"))
+    assert "report.pdf" in data["generated_files"]
+
+
+def test_build_no_pdf_flag_summary_excludes_report_pdf(valid_input_dir, tmp_path):
+    out = tmp_path / "out"
+    _cli("build", "--input", str(valid_input_dir), "--output", str(out))
+    data = json.loads((out / "summary.json").read_text(encoding="utf-8"))
+    assert "report.pdf" not in data["generated_files"]

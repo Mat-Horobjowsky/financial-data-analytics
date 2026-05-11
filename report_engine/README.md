@@ -1,6 +1,6 @@
-# report_engine v1.2
+# report_engine v1.3
 
-Generates `report.md`, `report.html`, `summary.json`, and `insights.json` from a Metrics Engine output directory. Supports built-in report templates to control which sections are included.
+Generates `report.md`, `report.html`, `summary.json`, and `insights.json` from a Metrics Engine output directory. Supports built-in report templates to control which sections are included. Optionally generates `report.pdf` from the rendered HTML.
 
 ## Usage
 
@@ -15,6 +15,15 @@ report-engine build \
   --input "../metrics_engine/outputs/time_test" \
   --output outputs/report_v12 \
   --template executive_summary
+```
+
+With PDF export:
+
+```bash
+report-engine build \
+  --input "../metrics_engine/outputs/time_test" \
+  --output outputs/report_v12 \
+  --pdf
 ```
 
 ## Templates
@@ -48,6 +57,15 @@ The selected template name is recorded in `summary.json` under the `"template"` 
 | `report.html` | Self-contained HTML report with inline CSS |
 | `summary.json` | Machine-readable summary: validation status, metric count, date range, rollup levels, template name |
 | `insights.json` | Deterministic period-over-period insight records (one per metric with valid change data) |
+| `report.pdf` | PDF export of `report.html` — only created when `--pdf` is passed |
+
+PDF generation requires `xhtml2pdf`. Install it with:
+
+```bash
+pip install xhtml2pdf
+# or
+pip install "report_engine[pdf]"
+```
 
 ## Report sections
 
