@@ -7,6 +7,7 @@ from report_engine import templates as _templates
 from report_engine.formatting import format_metric_value
 from report_engine.insights import (
     build_insights,
+    build_readiness_recommendations,
     has_period_data,
     readiness_segment_data,
     readiness_snapshot_rows,
@@ -273,40 +274,7 @@ def _readiness_by_segment(data: ReportData) -> str:
 
 
 def _readiness_next_steps(data: ReportData) -> str:
-    rows = {r["metric_id"]: r for r in snapshot_rows(data)}
-    steps = []
-    crit = rows.get("critical_item_count")
-    if crit is not None:
-        try:
-            n = int(float(crit["value"]))
-            if n > 0:
-                steps.append(f"Resolve {n} critical item{'s' if n != 1 else ''} before project gate review.")
-        except (ValueError, TypeError):
-            pass
-    gaps = rows.get("open_gap_count")
-    if gaps is not None:
-        try:
-            n = int(float(gaps["value"]))
-            if n > 0:
-                steps.append(f"Address {n} open gap{'s' if n != 1 else ''} to advance readiness.")
-        except (ValueError, TypeError):
-            pass
-    completion = rows.get("readiness_completion_pct")
-    if completion is not None:
-        try:
-            pct = float(completion["value"])
-            if pct >= 100:
-                steps.append("Readiness is at 100% — maintain posture and schedule periodic reviews.")
-            else:
-                steps.append(
-                    f"Current readiness is {format_metric_value(pct, '%')} — close remaining items "
-                    "to reach 100% before milestone review."
-                )
-        except (ValueError, TypeError):
-            pass
-    if not steps:
-        steps.append("Review readiness metrics to identify gaps and priorities.")
-    steps.append("Schedule periodic readiness reviews to monitor progress against plan.")
+    recs = build_readiness_recommendations(data)
     lines = ["## Recommended Next Steps", ""]
-    lines += [f"- {s}" for s in steps]
+    lines += [f"- {r['recommendation']}" for r in recs]
     return "\n".join(lines)
