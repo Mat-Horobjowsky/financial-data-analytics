@@ -19,6 +19,7 @@ __pycache__/
 .venv/
 */.venv/
 **/.venv/
+.venv312/
 
 # -------------------------
 # Pytest
@@ -37,6 +38,7 @@ data/raw/
 # -------------------------
 # Environment / secrets
 # -------------------------
+env/
 .env
 *.env
 

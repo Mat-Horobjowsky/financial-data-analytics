@@ -82,13 +82,28 @@ report-engine build \
 | `insights.json` | Deterministic period-over-period insight records (one per metric with valid change data) |
 | `report.pdf` | PDF export of `report.html` — only created when `--pdf` is passed |
 
-PDF generation requires `xhtml2pdf`. Install it with:
+### PDF dependency and Python version compatibility
+
+PDF generation uses `xhtml2pdf`, declared as the `pdf` optional extra.
 
 ```bash
 pip install xhtml2pdf
 # or
 pip install "report_engine[pdf]"
 ```
+
+**Known limitation — Python 3.14 on Windows:**
+`xhtml2pdf` depends on `python-bidi`, which is a C extension. On Python 3.14, pre-built wheels for `python-bidi` are not yet available on PyPI for Windows. Without a wheel, pip attempts a source build, which requires MSVC `link.exe` (Visual C++ Build Tools). If those are absent, the install fails with a `failed-wheel-build-for-install` error.
+
+**Workaround:** Use Python 3.12 or 3.13. Both have stable `python-bidi` wheels on Windows and install `xhtml2pdf` without a compiler.
+
+**Future option — Playwright:**
+If Python 3.14 support is required, replacing `xhtml2pdf` with Playwright is the most viable path. Playwright drives a real Chromium/Firefox browser to render HTML and export PDF, so it is not limited by wheel availability:
+
+- Pure-Python install: `pip install playwright && playwright install chromium`
+- Full CSS support (unlike xhtml2pdf, which has partial CSS2 support)
+- PDF output via `page.pdf()` from the rendered `report.html`
+- Tradeoff: Playwright downloads ~130 MB of browser binaries on first install. It is heavier than xhtml2pdf but appropriate if high-fidelity PDF output or Python 3.14+ compatibility is needed.
 
 ## Report sections
 
