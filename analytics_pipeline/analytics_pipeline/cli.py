@@ -64,7 +64,7 @@ def cmd_run(args) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="analytics-pipeline",
-        description="Run the full Intake → Metrics → Report pipeline",
+        description="Run the full Intake -> Metrics -> Report pipeline",
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
