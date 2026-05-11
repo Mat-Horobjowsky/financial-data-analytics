@@ -21,6 +21,16 @@ _REGISTRY: dict[str, list[str]] = {
         "metrics_summary",
         "metric_dictionary",
     ],
+    "readiness_summary": [
+        "header",
+        "validation",
+        "readiness_snapshot",
+        "open_gaps",
+        "critical_items",
+        "readiness_by_segment",
+        "readiness_next_steps",
+        "metric_dictionary",
+    ],
 }
 
 DEFAULT_TEMPLATE = "full_report"

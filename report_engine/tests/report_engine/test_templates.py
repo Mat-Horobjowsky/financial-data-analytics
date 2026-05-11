@@ -39,6 +39,19 @@ def test_metrics_detail_sections_are_ordered():
     ]
 
 
+def test_readiness_summary_sections_are_ordered():
+    assert get_sections("readiness_summary") == [
+        "header",
+        "validation",
+        "readiness_snapshot",
+        "open_gaps",
+        "critical_items",
+        "readiness_by_segment",
+        "readiness_next_steps",
+        "metric_dictionary",
+    ]
+
+
 # ── Default and valid template tests ──────────────────────────────────────────
 
 def test_default_template_is_full_report():
@@ -51,8 +64,12 @@ def test_valid_templates_contains_all_three():
     assert "metrics_detail" in VALID_TEMPLATES
 
 
-def test_valid_templates_has_exactly_three():
-    assert len(VALID_TEMPLATES) == 3
+def test_valid_templates_contains_readiness_summary():
+    assert "readiness_summary" in VALID_TEMPLATES
+
+
+def test_valid_templates_has_exactly_four():
+    assert len(VALID_TEMPLATES) == 4
 
 
 # ── Error handling tests ───────────────────────────────────────────────────────

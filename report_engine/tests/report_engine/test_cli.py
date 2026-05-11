@@ -333,3 +333,103 @@ def test_build_no_pdf_flag_summary_excludes_report_pdf(valid_input_dir, tmp_path
     _cli("build", "--input", str(valid_input_dir), "--output", str(out))
     data = json.loads((out / "summary.json").read_text(encoding="utf-8"))
     assert "report.pdf" not in data["generated_files"]
+
+
+# ── Readiness summary template tests ──────────────────────────────────────────
+
+@pytest.fixture
+def readiness_input_dir(tmp_path):
+    (tmp_path / "validation_report.json").write_text(
+        json.dumps({"status": "passed", "errors": [], "warnings": []}),
+        encoding="utf-8",
+    )
+    (tmp_path / "long_metrics.csv").write_text(
+        "rollup_level,date,category,market,metric_id,label,value,unit\n"
+        "date_only,2025-01-15,,,readiness_completion_pct,Readiness Completion %,72.5,%\n"
+        "date_only,2025-01-15,,,total_requirement_count,Total Requirement Count,40,requirements\n"
+        "date_only,2025-01-15,,,open_gap_count,Open Gap Count,11,gaps\n"
+        "date_only,2025-01-15,,,critical_item_count,Critical Item Count,3,items\n"
+        "date_category,2025-01-15,capital,,readiness_completion_pct,Readiness Completion %,80.0,%\n"
+        "date_category,2025-01-15,capital,,open_gap_count,Open Gap Count,2,gaps\n"
+        "date_category,2025-01-15,capital,,critical_item_count,Critical Item Count,0,items\n"
+        "date_category,2025-01-15,commercial,,readiness_completion_pct,Readiness Completion %,65.0,%\n"
+        "date_category,2025-01-15,commercial,,open_gap_count,Open Gap Count,9,gaps\n"
+        "date_category,2025-01-15,commercial,,critical_item_count,Critical Item Count,3,items\n"
+        "date_market,2025-01-15,,EMEA,readiness_completion_pct,Readiness Completion %,75.0,%\n"
+        "date_market,2025-01-15,,NAM,readiness_completion_pct,Readiness Completion %,70.0,%\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "metric_dictionary.csv").write_text(
+        "id,label,type,unit,decimals,description\n"
+        "readiness_completion_pct,Readiness Completion %,completion_pct,%,1,Percentage of requirements marked complete\n"
+        "open_gap_count,Open Gap Count,conditional_count,gaps,0,Requirements not yet complete\n"
+        "critical_item_count,Critical Item Count,conditional_count,items,0,Requirements marked critical\n"
+        "total_requirement_count,Total Requirement Count,count,requirements,0,Total requirements in scope\n",
+        encoding="utf-8",
+    )
+    return tmp_path
+
+
+def test_build_readiness_summary_exits_zero(readiness_input_dir, tmp_path):
+    result = _cli("build", "--input", str(readiness_input_dir), "--output", str(tmp_path / "out"), "--template", "readiness_summary")
+    assert result.returncode == 0
+
+
+def test_build_readiness_summary_md_contains_readiness_snapshot_heading(readiness_input_dir, tmp_path):
+    out = tmp_path / "out"
+    _cli("build", "--input", str(readiness_input_dir), "--output", str(out), "--template", "readiness_summary")
+    md = (out / "report.md").read_text(encoding="utf-8")
+    assert "## Readiness Snapshot" in md
+
+
+def test_build_readiness_summary_md_contains_open_gaps_heading(readiness_input_dir, tmp_path):
+    out = tmp_path / "out"
+    _cli("build", "--input", str(readiness_input_dir), "--output", str(out), "--template", "readiness_summary")
+    md = (out / "report.md").read_text(encoding="utf-8")
+    assert "## Open Gaps" in md
+
+
+def test_build_readiness_summary_md_contains_critical_items_heading(readiness_input_dir, tmp_path):
+    out = tmp_path / "out"
+    _cli("build", "--input", str(readiness_input_dir), "--output", str(out), "--template", "readiness_summary")
+    md = (out / "report.md").read_text(encoding="utf-8")
+    assert "## Critical Items" in md
+
+
+def test_build_readiness_summary_md_contains_next_steps_heading(readiness_input_dir, tmp_path):
+    out = tmp_path / "out"
+    _cli("build", "--input", str(readiness_input_dir), "--output", str(out), "--template", "readiness_summary")
+    md = (out / "report.md").read_text(encoding="utf-8")
+    assert "## Recommended Next Steps" in md
+
+
+def test_build_readiness_summary_html_contains_readiness_snapshot_heading(readiness_input_dir, tmp_path):
+    out = tmp_path / "out"
+    _cli("build", "--input", str(readiness_input_dir), "--output", str(out), "--template", "readiness_summary")
+    html = (out / "report.html").read_text(encoding="utf-8")
+    assert "<h2>Readiness Snapshot</h2>" in html
+
+
+def test_build_readiness_summary_omits_kpi_snapshot_heading(readiness_input_dir, tmp_path):
+    out = tmp_path / "out"
+    _cli("build", "--input", str(readiness_input_dir), "--output", str(out), "--template", "readiness_summary")
+    md = (out / "report.md").read_text(encoding="utf-8")
+    assert "## KPI Snapshot" not in md
+
+
+def test_build_readiness_summary_summary_json_records_template(readiness_input_dir, tmp_path):
+    out = tmp_path / "out"
+    _cli("build", "--input", str(readiness_input_dir), "--output", str(out), "--template", "readiness_summary")
+    data = json.loads((out / "summary.json").read_text(encoding="utf-8"))
+    assert data["template"] == "readiness_summary"
+
+
+def test_build_readiness_summary_with_pdf_exits_zero(readiness_input_dir, tmp_path):
+    result = _cli("build", "--input", str(readiness_input_dir), "--output", str(tmp_path / "out"), "--template", "readiness_summary", "--pdf")
+    assert result.returncode == 0
+
+
+def test_build_readiness_summary_with_pdf_creates_report_pdf(readiness_input_dir, tmp_path):
+    out = tmp_path / "out"
+    _cli("build", "--input", str(readiness_input_dir), "--output", str(out), "--template", "readiness_summary", "--pdf")
+    assert (out / "report.pdf").exists()

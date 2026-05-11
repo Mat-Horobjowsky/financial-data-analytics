@@ -1,4 +1,4 @@
-# report_engine v1.3
+# report_engine v1.4
 
 Generates `report.md`, `report.html`, `summary.json`, and `insights.json` from a Metrics Engine output directory. Supports built-in report templates to control which sections are included. Optionally generates `report.pdf` from the rendered HTML.
 
@@ -35,10 +35,33 @@ The `--template` flag selects which sections appear in `report.md` and `report.h
 | `full_report` (default) | Header, Validation, KPI Snapshot, Key Insights, Metrics Summary, Metric Dictionary |
 | `executive_summary` | Header, Validation, KPI Snapshot, Key Insights |
 | `metrics_detail` | Header, Validation, Metrics Summary, Metric Dictionary |
+| `readiness_summary` | Header, Validation, Readiness Snapshot, Open Gaps, Critical Items, Readiness by Segment, Recommended Next Steps, Metric Dictionary |
 
 `summary.json` and `insights.json` are always written regardless of selected template.
 
 The selected template name is recorded in `summary.json` under the `"template"` key.
+
+### readiness_summary
+
+Designed for readiness-specific Metrics Engine output. Detects the following metric IDs and renders client-facing readiness language:
+
+| Metric ID | Label |
+|---|---|
+| `readiness_completion_pct` | Readiness Completion % |
+| `open_gap_count` | Open Gaps |
+| `critical_item_count` | Critical Items |
+| `total_requirement_count` | Total Requirements |
+
+Falls back gracefully if these metrics are not present. Renders segment breakdowns (By Category, By Market) when `date_category` or `date_market` rollup rows are available in `long_metrics.csv`.
+
+Example:
+
+```bash
+report-engine build \
+  --input "../metrics_engine/outputs/readiness" \
+  --output outputs/readiness_report \
+  --template readiness_summary
+```
 
 ## Input files
 

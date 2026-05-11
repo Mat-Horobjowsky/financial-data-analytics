@@ -589,10 +589,9 @@ Active development is focused on `intake_engine/`, `metrics_engine/`, `report_en
 - **Power BI Export stage** — `--with-powerbi-export` flag adds a sixth pipeline stage; exports five flat CSVs (`readiness_kpis`, `readiness_by_category`, `readiness_by_market`, `validation_summary`, `metric_dictionary`) for a reusable Power BI template; `--client-context` flag copies project metadata CSV into the export directory
 - **Deterministic demo context generation** — `build_powerbi_export.py` pre-processes a multi-sheet client intake workbook into a flat `PowerBI_Export` sheet and writes `client_context.csv` alongside it; all demo context values are deterministic and reproducible
 - **Report Engine PDF Export** — `--pdf` flag on `report-engine build` generates `report.pdf` from the rendered HTML; `xhtml2pdf` optional dependency; fails clearly if library is not installed
+- **Report Engine readiness template** — `--template readiness_summary` renders client-facing readiness sections (Readiness Snapshot, Open Gaps, Critical Items, Readiness by Segment, Recommended Next Steps); detects `date_category`/`date_market` rollup rows for segment breakdowns; falls back gracefully on generic data
 
 ### Next Priorities
-
-**Report Engine — readiness template** — a report template tuned to readiness metric labels and structure, replacing the generic KPI defaults when running the readiness pack
 
 ---
 
