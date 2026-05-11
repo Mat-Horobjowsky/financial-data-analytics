@@ -21,7 +21,7 @@ Clean data → Trusted metrics → Visuals anywhere
 | **Report Engine** | v1.2 | Metrics Engine output directory | Markdown + HTML reports, summary JSON, insights JSON |
 | **Analytics Store** | v0.1 | Metrics Engine output + Report Engine output (optional) | `analytics.duckdb` — 6 tables, 3 views |
 | **Visuals Engine** | v0.1 | `analytics.duckdb` | Self-contained HTML dashboard, `visuals_summary.json` |
-| **Analytics Pipeline** | v0.2 | Raw CSV / XLSX | All engine outputs + `pipeline_summary.json`; optional store and visuals stages via `--with-store` / `--with-visuals`; alternate metric configs via `--metrics-config` / `--schema-config` |
+| **Analytics Pipeline** | v0.2 | Raw CSV / XLSX | All engine outputs + `pipeline_summary.json`; optional store, visuals, and Power BI export stages via `--with-store` / `--with-visuals` / `--with-powerbi-export`; named Excel sheet selection via `--sheet`; alternate metric configs via `--metrics-config` / `--schema-config` |
 
 Each engine is a standalone Python CLI package with tests, documented outputs, and a clearly scoped role in the pipeline.
 
@@ -35,6 +35,8 @@ Report Engine
 Analytics Store        (--with-store)
     ↓
 Visuals Engine         (--with-visuals)
+    ↓
+Power BI Export        (--with-powerbi-export)
 ```
 
 ---
@@ -52,45 +54,43 @@ A realistic messy export: inconsistent headers (`Report Date`, `Total Revenue ($
 ### Step 1 — Intake Engine
 
 ```bash
-cd intake_engine
-intake run tests/fixtures/messy_data_center_sample_for_intake.csv --profile --validate
-cd ..
+intake run intake_engine/tests/fixtures/messy_data_center_sample_for_intake.csv \
+  --output-dir outputs/demo/intake \
+  --profile \
+  --validate
 ```
 
-Outputs to `intake_engine/outputs/`:
-- `messy_data_center_sample_for_intake_clean.csv` — cleaned, schema-normalized data
-- `messy_data_center_sample_for_intake_report.html` — self-contained HTML quality report
-- `messy_data_center_sample_for_intake_validation.json` — validation result (PASS / WARN / FAIL)
-- `messy_data_center_sample_for_intake_profile.json` — semantic type inference and transformation log
+Outputs to `outputs/demo/intake/`:
+- `*_clean.csv` — cleaned, schema-normalized data
+- `*_report.html` — self-contained HTML quality report
+- `*_validation.json` — validation result (PASS / WARN / FAIL)
+- `*_profile.json` — semantic type inference and transformation log
 
 ### Step 2 — Metrics Engine (with prior-period analysis)
 
 ```bash
-cd metrics_engine
-metrics-engine run \
-  --input ../intake_engine/outputs/messy_data_center_sample_for_intake_clean.csv \
-  --output outputs/demo \
+python -m metrics_engine.cli run \
+  --input outputs/demo/intake/messy_data_center_sample_for_intake_clean.csv \
+  --output outputs/demo/metrics \
   --with-time
-cd ..
 ```
 
-Outputs to `metrics_engine/outputs/demo/`:
+Outputs to `outputs/demo/metrics/`:
 - `long_metrics.csv` — one row per metric per rollup level, with `prior_period_value`, `period_change`, and `period_change_pct` columns
 - `wide_metrics.csv` — one row per date+segment, metrics as columns
-- `metric_dictionary.csv` — definitions, units, and descriptions for all 6 KPIs
+- `metric_dictionary.csv` — definitions, units, and descriptions for all KPIs
 - `validation_report.json` — full validation status, errors, and warnings
 - `metrics_output.xlsx` — all outputs in a single Excel workbook
 
 ### Step 3 — Report Engine, full report
 
 ```bash
-cd report_engine
-report-engine build \
-  --input ../metrics_engine/outputs/demo \
-  --output outputs/demo_full_report
+python -m report_engine.cli build \
+  --input outputs/demo/metrics \
+  --output outputs/demo/report
 ```
 
-Outputs to `report_engine/outputs/demo_full_report/`:
+Outputs to `outputs/demo/report/`:
 - `report.md` — full Markdown report with all six sections
 - `report.html` — self-contained HTML report with inline CSS
 - `summary.json` — machine-readable summary (validation status, metric count, date range, template name)
@@ -99,14 +99,24 @@ Outputs to `report_engine/outputs/demo_full_report/`:
 ### Step 4 — Report Engine, executive summary
 
 ```bash
-report-engine build \
-  --input ../metrics_engine/outputs/demo \
-  --output outputs/demo_executive_summary \
+python -m report_engine.cli build \
+  --input outputs/demo/metrics \
+  --output outputs/demo/report_exec \
   --template executive_summary
-cd ..
 ```
 
 Outputs a compact report containing Header, Validation, KPI Snapshot, and Key Insights only — no raw data tables.
+
+### Or: run all four stages in one command
+
+```bash
+analytics-pipeline run \
+  --input intake_engine/tests/fixtures/messy_data_center_sample_for_intake.csv \
+  --output outputs/demo \
+  --with-time \
+  --template full_report \
+  --with-store
+```
 
 ---
 
@@ -116,60 +126,6 @@ The Analytics Pipeline supports alternate metric packs via `--metrics-config` an
 
 **Strategic wedge:** help data center occupiers, developers, brokers, and investors understand whether a project is ready to transact.
 
-### Demo client: NovaTech Systems
-
-`examples/readiness_demo/client_intake_template.xlsx` is the reusable client intake workbook for the readiness demo workflow. Its `PowerBI_Export` sheet contains 24 scoped requirements across 8 readiness categories (capacity, timeline, technical, market, power, commercial, capital, decision) for a NAM infrastructure project.
-
-The sheet uses a flat requirement-per-row schema that feeds directly into the readiness pipeline:
-
-```
-date | project_id | category | market | requirement_name | status | severity | notes
-```
-
-Run the demo in two steps — the Intake Engine reads the named sheet, and the Analytics Pipeline processes the clean CSV:
-
-```bash
-# Step 1 — Intake Engine reads the PowerBI_Export sheet
-intake run examples/readiness_demo/client_intake_template.xlsx \
-  --sheet PowerBI_Export \
-  --output-dir outputs/demo_client/intake \
-  --validate
-
-# Step 2 — Analytics Pipeline on the clean CSV
-analytics-pipeline run \
-  --input outputs/demo_client/intake/client_intake_template_powerbi_export_clean.csv \
-  --output outputs/demo_client/pipeline \
-  --metrics-config metrics_engine/config/readiness_metrics.yaml \
-  --schema-config metrics_engine/config/readiness_schema.yaml \
-  --with-visuals
-```
-
-### One-command CSV pipeline
-
-To run against the sample CSV directly (no Excel step required):
-
-```bash
-analytics-pipeline run \
-  --input metrics_engine/data/sample_readiness.csv \
-  --output outputs/pipeline_readiness \
-  --metrics-config metrics_engine/config/readiness_metrics.yaml \
-  --schema-config metrics_engine/config/readiness_schema.yaml \
-  --with-visuals
-```
-
-Both workflows run all five stages and produce:
-
-```
-<output>/
-  intake/                                  ← cleaned readiness data
-  metrics/                                 ← readiness KPI tables
-  report/                                  ← report against readiness metrics
-  store/analytics.duckdb                   ← DuckDB store
-  visuals/readiness_dashboard.html         ← self-contained HTML dashboard
-  visuals/visuals_summary.json
-  pipeline_summary.json                    ← status + command for all five stages
-```
-
 ### Readiness metrics
 
 | Metric | Description |
@@ -178,6 +134,74 @@ Both workflows run all five stages and produce:
 | `total_requirement_count` | Total requirements in scope |
 | `open_gap_count` | Requirements not yet complete |
 | `critical_item_count` | Requirements marked critical |
+
+### Try it now — one command from a committed CSV
+
+The sample readiness dataset is committed at `metrics_engine/data/sample_readiness.csv`. This command runs immediately after cloning:
+
+```bash
+analytics-pipeline run \
+  --input metrics_engine/data/sample_readiness.csv \
+  --output outputs/demo_readiness \
+  --metrics-config metrics_engine/config/readiness_metrics.yaml \
+  --schema-config metrics_engine/config/readiness_schema.yaml \
+  --with-visuals \
+  --with-powerbi-export
+```
+
+Produces all six pipeline stages, including an HTML dashboard that can be opened offline in any browser:
+
+```
+outputs/demo_readiness/
+  intake/                            ← cleaned readiness data
+  metrics/                           ← readiness KPI tables
+  report/                            ← report against readiness metrics
+  store/analytics.duckdb             ← DuckDB store
+  visuals/readiness_dashboard.html   ← self-contained HTML dashboard
+  visuals/visuals_summary.json
+  powerbi/                           ← flat CSVs for a reusable Power BI template
+    readiness_kpis.csv
+    readiness_by_category.csv
+    readiness_by_market.csv
+    validation_summary.csv
+    metric_dictionary.csv
+  pipeline_summary.json
+```
+
+### Excel workbook path — for client files
+
+> **Note:** The workbooks and CSVs in `examples/readiness_demo/` are excluded from the repo by a local `.gitignore` (private client artifacts). The Excel workflow below applies when you have a source workbook locally.
+
+The `build_powerbi_export.py` script pre-processes a multi-sheet client intake workbook — it resolves each requirement's status from the `Requirement_Map` and `Client_Export` sheets, writes a flat `PowerBI_Export` sheet into a new output workbook, and generates `client_context.csv` alongside it.
+
+**Step 1 — Generate the export workbook and client context:**
+
+```bash
+python examples/readiness_demo/build_powerbi_export.py \
+  --workbook examples/readiness_demo/client_intake_template.xlsx \
+  --output examples/readiness_demo/client_intake_template_demo.xlsx \
+  --demo-context
+```
+
+This writes two files (both ignored by `.gitignore` — local only):
+- `client_intake_template_demo.xlsx` — copy of the workbook with `PowerBI_Export` sheet populated
+- `client_context.csv` — project metadata (client name, capacity, markets, timeline, executive summary)
+
+**Step 2 — Run the full pipeline from the Excel sheet:**
+
+```bash
+analytics-pipeline run \
+  --input examples/readiness_demo/client_intake_template_demo.xlsx \
+  --sheet PowerBI_Export \
+  --output outputs/demo_client \
+  --metrics-config metrics_engine/config/readiness_metrics.yaml \
+  --schema-config metrics_engine/config/readiness_schema.yaml \
+  --with-visuals \
+  --with-powerbi-export \
+  --client-context examples/readiness_demo/client_context.csv
+```
+
+The `--sheet` flag passes the named Excel sheet directly to the Intake Engine. The `--client-context` flag copies `client_context.csv` into the `powerbi/` output directory alongside the exported metric CSVs — ready for Power BI template consumption.
 
 ### Dashboard output
 
@@ -198,6 +222,7 @@ It handles delimiter detection, header normalization, numeric and date cleaning,
 ### Key Features
 
 - CSV, TSV, and Excel ingestion with auto-detected delimiters
+- Named sheet selection (`--sheet`) for multi-sheet XLSX files
 - Header normalization (trim, lowercase, snake_case)
 - Numeric normalization — strips `$`, `,`, `%`, parenthetical negatives
 - Date normalization — standardizes 12+ date formats to ISO 8601
@@ -214,8 +239,7 @@ It handles delimiter detection, header normalization, numeric and date cleaning,
 ### Setup
 
 ```bash
-cd intake_engine
-pip install -e ".[dev]"
+pip install -e intake_engine
 ```
 
 ### CLI
@@ -256,14 +280,13 @@ Instead of calculating KPIs separately in dashboards, spreadsheets, and reports,
 ### Setup
 
 ```bash
-cd metrics_engine
-pip install -e ".[dev]"
+pip install -e metrics_engine
 ```
 
 ### CLI
 
 ```bash
-metrics-engine --help
+python -m metrics_engine.cli --help
 ```
 
 ### Example Outputs
@@ -307,14 +330,16 @@ It takes validated metric outputs and turns them into structured deliverables th
 ### Setup
 
 ```bash
-cd report_engine
-pip install -e ".[dev]"
+pip install -e report_engine
 ```
 
 ### CLI
 
 ```bash
-report-engine build --input <metrics_output_dir> --output <output_dir> [--template full_report|executive_summary|metrics_detail]
+python -m report_engine.cli build \
+  --input <metrics_output_dir> \
+  --output <output_dir> \
+  [--template full_report|executive_summary|metrics_detail]
 ```
 
 ### Templates
@@ -340,21 +365,19 @@ report-engine build --input <metrics_output_dir> --output <output_dir> [--templa
 
 ## Analytics Pipeline
 
-A stage-based orchestrator that runs all three engines in sequence from a single command.
+A stage-based orchestrator that runs all engines in sequence from a single command.
 
 ### Purpose
 
-The Analytics Pipeline removes the need to run Intake, Metrics, and Report as separate steps. One command drives the full workflow, stops at the first failed stage, and produces a `pipeline_summary.json` recording the status and output files for every stage.
+The Analytics Pipeline removes the need to run each engine as a separate step. One command drives the full workflow — Intake through Power BI Export — stops at the first failed stage, and writes a `pipeline_summary.json` recording the status and output files for every stage.
 
 ### Setup
 
-All three engines must be installed first:
+Install all engines from the repo root into your active environment:
 
 ```bash
-cd intake_engine && pip install -e . && cd ..
-cd metrics_engine && pip install -e . && cd ..
-cd report_engine && pip install -e . && cd ..
-cd analytics_pipeline && pip install -e ".[dev]"
+pip install -e intake_engine -e metrics_engine -e report_engine \
+            -e analytics_store -e visuals_engine -e analytics_pipeline
 ```
 
 ### CLI
@@ -372,26 +395,57 @@ analytics-pipeline run \
 |---|---|---|
 | `--input` | *(required)* | Raw input file (CSV or XLSX) |
 | `--output` | `outputs/pipeline` | Pipeline output root directory |
+| `--sheet` | *(none)* | Excel sheet name passed to Intake Engine (for multi-sheet XLSX files) |
 | `--with-time` | off | Enable prior-period time analysis in Metrics Engine |
 | `--template` | `full_report` | Report template (`full_report`, `executive_summary`, `metrics_detail`) |
 | `--with-store` | off | Run Analytics Store stage after report; creates `store/analytics.duckdb` |
 | `--with-visuals` | off | Run Visuals Engine after store; creates `visuals/readiness_dashboard.html`; implies `--with-store` |
+| `--with-powerbi-export` | off | Run Power BI CSV export after store; creates `powerbi/*.csv`; implies `--with-store` |
 | `--metrics-config` | `metrics_engine/config/metrics.yaml` | Custom Metrics Engine config YAML (enables alternate metric packs) |
 | `--schema-config` | `metrics_engine/config/schema.yaml` | Custom Metrics Engine schema YAML |
+| `--client-context` | *(none)* | Path to `client_context.csv`; copied into `powerbi/` when `--with-powerbi-export` is used |
 
-`pipeline_summary.json` records the status and command for all stages that were enabled.
+`pipeline_summary.json` records all inputs, resolved config paths, and stage results so any run can be audited or replayed exactly.
 
 ### Output Structure
 
 ```
 <output>/
-├── intake/     # Clean CSV, HTML quality report, validation JSON
-├── metrics/    # Long/wide metrics, metric dictionary, validation report, Excel workbook
-├── report/     # report.html, report.md, summary.json, insights.json
-├── store/      # analytics.duckdb — created when --with-store or --with-visuals is passed
-├── visuals/    # readiness_dashboard.html, visuals_summary.json — created when --with-visuals is passed
+├── intake/          # Clean CSV, HTML quality report, validation JSON, profiling JSON
+├── metrics/         # Long/wide metrics, metric dictionary, validation report, Excel workbook
+├── report/          # report.html, report.md, summary.json, insights.json
+├── store/           # analytics.duckdb — created when --with-store is passed
+│   └── analytics.duckdb
+├── visuals/         # Self-contained HTML dashboard — created when --with-visuals is passed
+│   ├── readiness_dashboard.html
+│   └── visuals_summary.json
+├── powerbi/         # Flat CSVs for a reusable Power BI template — created when --with-powerbi-export is passed
+│   ├── readiness_kpis.csv
+│   ├── readiness_by_category.csv
+│   ├── readiness_by_market.csv
+│   ├── validation_summary.csv
+│   ├── metric_dictionary.csv
+│   └── client_context.csv          # optional — copied when --client-context is provided
 └── pipeline_summary.json
 ```
+
+### Pipeline Stages
+
+```
+Intake Engine        (always)
+    ↓
+Metrics Engine       (always — uses --metrics-config / --schema-config if provided)
+    ↓
+Report Engine        (always)
+    ↓
+Analytics Store      (optional — enabled with --with-store or implied by --with-visuals / --with-powerbi-export)
+    ↓
+Visuals Engine       (optional — enabled with --with-visuals)
+    ↓
+Power BI Export      (optional — enabled with --with-powerbi-export; independent of --with-visuals)
+```
+
+Each stage runs only after the previous one succeeds. If any stage fails, later stages are skipped and their status is recorded in `pipeline_summary.json`.
 
 ---
 
@@ -406,13 +460,13 @@ The Analytics Store loads trusted metric and report outputs into named DuckDB ta
 ### Setup
 
 ```bash
-cd analytics_store && pip install -e ".[dev]"
+pip install -e analytics_store
 ```
 
 ### CLI
 
 ```bash
-analytics-store build \
+python -m analytics_store.cli build \
   --metrics <metrics_output_dir> \
   --report <report_output_dir> \
   --output outputs/analytics.duckdb
@@ -467,7 +521,7 @@ The Visuals Engine closes the loop from raw data to visual output. It reads the 
 ### Setup
 
 ```bash
-cd visuals_engine && pip install -e ".[dev]"
+pip install -e visuals_engine
 ```
 
 ### CLI
@@ -520,7 +574,7 @@ Active development is focused on `intake_engine/`, `metrics_engine/`, `report_en
 
 ### Completed
 
-- **Intake Engine** — ingest and clean messy CSV / XLSX files; validate, profile, and export clean analytics-ready data
+- **Intake Engine** — ingest and clean messy CSV / XLSX files; validate, profile, and export clean analytics-ready data; named sheet selection (`--sheet`) for multi-sheet XLSX files
 - **Metrics Engine v1.1** — YAML-driven KPI calculation across configurable rollup levels; prior-period time analysis with `--with-time`
 - **Metrics Engine — Readiness metrics pack** — alternate YAML config for `count`, `conditional_count`, and `completion_pct` metric types; enables project readiness tracking via `--config` / `--schema`
 - **Report Engine v1.2** — client-ready Markdown and HTML reports; KPI Snapshot; deterministic Key Insights; three built-in templates (`full_report`, `executive_summary`, `metrics_detail`); `insights.json`
@@ -532,6 +586,8 @@ Active development is focused on `intake_engine/`, `metrics_engine/`, `report_en
 - **End-to-End Pipeline** — full Intake → Metrics → Report → Store → Visuals workflow on both data center KPIs and readiness metrics
 - **Readiness demo prototype** — fictional client intake workbook (`NovaTech Systems / NVT-2025-NAM`); `PowerBI_Export` sheet with flat requirement-per-row schema; Intake Engine `--sheet` flag selects the named sheet; two-step Intake → Pipeline workflow validated end-to-end
 - **Visuals Engine — dashboard polish** — configurable `title`, `subtitle`, `kpi_labels`, `kpi_descriptions`, and `category_labels` in YAML spec; client-friendly footer; human-readable KPI and category labels without code changes
+- **Power BI Export stage** — `--with-powerbi-export` flag adds a sixth pipeline stage; exports five flat CSVs (`readiness_kpis`, `readiness_by_category`, `readiness_by_market`, `validation_summary`, `metric_dictionary`) for a reusable Power BI template; `--client-context` flag copies project metadata CSV into the export directory
+- **Deterministic demo context generation** — `build_powerbi_export.py` pre-processes a multi-sheet client intake workbook into a flat `PowerBI_Export` sheet and writes `client_context.csv` alongside it; all demo context values are deterministic and reproducible
 
 ### Next Priorities
 
