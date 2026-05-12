@@ -174,12 +174,13 @@ Analytics and consulting work routinely starts with ingesting data from multiple
 ```bash
 git clone https://github.com/Mat-Horobjowsky/financial-data-analytics.git
 cd financial-data-analytics/intake_engine
-python -m venv .venv
-source .venv/bin/activate    # Windows: .venv\Scripts\activate
+py -3.12 -m venv .venv
+.venv\Scripts\activate       # Windows
+# source .venv/bin/activate  # macOS / Linux
 pip install -e .
 ```
 
-Requires Python 3.11+.
+Requires Python 3.11+. Python 3.12 is the recommended and validated environment for this repo.
 
 ---
 

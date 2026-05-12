@@ -34,5 +34,8 @@ analytics-pipeline = "analytics_pipeline.cli:main"
 testpaths = ["tests"]
 addopts = "-v"
 
+[tool.hatch.metadata]
+allow-direct-references = true
+
 [tool.hatch.build.targets.wheel]
 packages = ["analytics_pipeline"]

@@ -97,7 +97,7 @@ def main() -> None:
         "--with-visuals",
         dest="with_visuals",
         action="store_true",
-        help="Run the visuals_engine stage after store (creates readiness_dashboard.html); implies --with-store",
+        help="Run the visuals_engine stage after store (creates readiness_dashboard.html and readiness_dashboard.pdf when xhtml2pdf is available); implies --with-store",
     )
     run_p.add_argument(
         "--with-powerbi-export",

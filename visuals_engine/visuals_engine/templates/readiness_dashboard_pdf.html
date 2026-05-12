@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>{{ title }}</title>
+<style>
+@page {
+  size: A4 landscape;
+  margin: 12mm 16mm;
+}
+
+body {
+  font-family: Helvetica, Arial, sans-serif;
+  font-size: 9pt;
+  color: #1a202c;
+  margin: 0;
+  padding: 0;
+}
+
+/* ── Section title ── */
+.section-title {
+  font-size: 7.5pt;
+  font-weight: bold;
+  color: #2d3748;
+  text-transform: uppercase;
+  letter-spacing: 0.5pt;
+  border-bottom: 1.5pt solid #e2e8f0;
+  padding-bottom: 2pt;
+  margin: 4pt 0 3pt 0;
+}
+
+/* ── KPI card cells ── */
+.kpi-cell {
+  border: 0.75pt solid #e2e8f0;
+  border-top: 3pt solid #cbd5e0;
+  background-color: #ffffff;
+  padding: 6pt 10pt 5pt;
+  vertical-align: top;
+}
+.kpi-cell-primary {
+  border-top-color: #3182ce;
+  background-color: #ebf8ff;
+}
+.kpi-value {
+  font-size: 17pt;
+  font-weight: bold;
+  color: #1a202c;
+  line-height: 1.1;
+}
+.kpi-value-primary {
+  color: #2b6cb0;
+}
+.kpi-label {
+  font-size: 6.5pt;
+  font-weight: bold;
+  color: #718096;
+  text-transform: uppercase;
+  letter-spacing: 0.4pt;
+  margin-top: 3pt;
+}
+
+/* ── Breakdown table ── */
+.breakdown-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.breakdown-th {
+  background-color: #f7fafc;
+  border-bottom: 1pt solid #e2e8f0;
+  font-size: 6.5pt;
+  font-weight: bold;
+  color: #a0aec0;
+  text-transform: uppercase;
+  letter-spacing: 0.4pt;
+  padding: 3pt 8pt;
+  text-align: left;
+}
+.breakdown-td {
+  border-bottom: 0.5pt solid #f0f4f8;
+  padding: 1pt 8pt;
+  font-size: 9pt;
+  vertical-align: middle;
+}
+
+/* ── Footer ── */
+.footer {
+  margin-top: 2pt;
+  border-top: 0.5pt solid #e2e8f0;
+  padding-top: 3pt;
+  font-size: 6.5pt;
+  color: #a0aec0;
+}
+.footer p { margin: 1pt 0; }
+</style>
+</head>
+<body>
+
+<table style="width: 100%; border-collapse: collapse; margin-bottom: 5pt;" cellspacing="0" cellpadding="0">
+  <tr>
+    <td style="background-color: #1a202c; padding: 7pt 8pt 7pt 12pt;">
+      <p style="font-size: 14pt; font-weight: bold; color: #f7fafc; margin: 0 0 3pt 0; line-height: 1.1;">{{ title }}</p>
+      {% if subtitle %}<p style="font-size: 8pt; color: #a0aec0; margin: 0;">{{ subtitle }}</p>{% endif %}
+    </td>
+    {% if as_of_date %}
+    <td style="background-color: #1a202c; padding: 7pt 12pt 7pt 8pt; text-align: right; vertical-align: middle; width: 90pt;">
+      <p style="font-size: 7.5pt; color: #718096; margin: 0;">As of {{ as_of_date }}</p>
+    </td>
+    {% endif %}
+  </tr>
+</table>
+
+<!-- KPI Cards -->
+<p class="section-title">{{ kpi_section_title }}</p>
+<table cellspacing="3" style="width: 100%;">
+  <tr>
+    {% for card in kpi_cards %}
+    <td class="kpi-cell{% if card.is_primary %} kpi-cell-primary{% endif %}" style="width: 25%;">
+      <div class="kpi-value{% if card.is_primary %} kpi-value-primary{% endif %}">{{ card.formatted_value }}</div>
+      <div class="kpi-label">{{ card.label }}</div>
+    </td>
+    {% endfor %}
+  </tr>
+</table>
+
+{% if category_rows %}
+<!-- Category Breakdown -->
+<p class="section-title">{{ category_section_title }}</p>
+<table class="breakdown-table">
+  <thead>
+    <tr>
+      <th class="breakdown-th" style="width: 150pt;">Category</th>
+      <th class="breakdown-th">Completion</th>
+      <th class="breakdown-th" style="width: 50pt; text-align: center;">Gaps</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in category_rows %}
+    <tr>
+      <td class="breakdown-td" style="font-weight: 500; color: #2d3748;">{{ row.name }}</td>
+      <td class="breakdown-td" style="font-weight: bold; color: {{ row.bar_color }};">{{ row.completion_pct_formatted }}</td>
+      <td class="breakdown-td" style="font-weight: 500; color: #4a5568; text-align: center;">{{ row.open_gap_count_formatted }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+{% if market_rows %}
+<!-- Market Breakdown -->
+<p class="section-title">{{ market_section_title }}</p>
+<table class="breakdown-table">
+  <thead>
+    <tr>
+      <th class="breakdown-th" style="width: 150pt;">Market</th>
+      <th class="breakdown-th">Completion</th>
+      <th class="breakdown-th" style="width: 50pt; text-align: center;">Gaps</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in market_rows %}
+    <tr>
+      <td class="breakdown-td" style="font-weight: 500; color: #2d3748;">{{ row.name }}</td>
+      <td class="breakdown-td" style="font-weight: bold; color: {{ row.bar_color }};">{{ row.completion_pct_formatted }}</td>
+      <td class="breakdown-td" style="font-weight: 500; color: #4a5568; text-align: center;">{{ row.open_gap_count_formatted }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+<div class="footer">
+  <p>Generated from Metrics Engine outputs stored in Analytics Store and rendered by Visuals Engine.</p>
+<p>Generated {{ generated_at }}</p>
+</div>
+
+</body>
+</html>

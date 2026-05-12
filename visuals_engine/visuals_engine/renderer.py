@@ -136,6 +136,11 @@ def render_html(template_path: Path, spec: dict, data: dict) -> str:
     return template.render(**context)
 
 
+def render_pdf_html(spec: dict, data: dict) -> str:
+    template_path = Path(__file__).parent / "templates" / "readiness_dashboard_pdf.html"
+    return render_html(template_path, spec, data)
+
+
 def render_summary(
     spec: dict,
     data: dict,

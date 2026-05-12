@@ -41,6 +41,27 @@ Power BI Export        (--with-powerbi-export)
 
 ---
 
+## Setup
+
+The full demo workflow — including PDF generation — has been validated on **Python 3.12**.
+
+```bash
+py -3.12 -m venv .venv
+.venv\Scripts\activate          # Windows
+# source .venv/bin/activate     # macOS / Linux
+
+pip install -e intake_engine \
+            -e metrics_engine \
+            -e "report_engine[pdf]" \
+            -e analytics_store \
+            -e "visuals_engine[pdf]" \
+            -e analytics_pipeline
+```
+
+The `[pdf]` extras install `xhtml2pdf` so that `report.pdf` and `readiness_dashboard.pdf` are produced automatically during the demo runs below.
+
+---
+
 ## End-to-End Demo Workflow
 
 The following commands run the full pipeline on the sample data center dataset.

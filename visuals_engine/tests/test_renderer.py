@@ -244,3 +244,53 @@ def test_summary_market_skipped(sample_spec, sample_data):
 def test_summary_validation_status(sample_spec, sample_data):
     summary = render_summary(sample_spec, sample_data, "test.duckdb", "test.yaml")
     assert summary["validation_status"] == "passed_with_warnings"
+
+
+# --- render_pdf_html ---
+
+
+def test_pdf_html_is_valid_document(sample_spec, sample_data):
+    from visuals_engine.renderer import render_pdf_html
+    html = render_pdf_html(sample_spec, sample_data)
+    assert "<!DOCTYPE html>" in html
+    assert "</html>" in html
+
+
+def test_pdf_html_contains_page_landscape_directive(sample_spec, sample_data):
+    from visuals_engine.renderer import render_pdf_html
+    html = render_pdf_html(sample_spec, sample_data)
+    assert "@page" in html
+    assert "landscape" in html
+
+
+def test_pdf_html_contains_completion_value(sample_spec, sample_data):
+    from visuals_engine.renderer import render_pdf_html
+    html = render_pdf_html(sample_spec, sample_data)
+    assert "50.0%" in html
+
+
+def test_pdf_html_contains_kpi_labels(sample_spec, sample_data):
+    from visuals_engine.renderer import render_pdf_html
+    html = render_pdf_html(sample_spec, sample_data)
+    assert "Readiness Completion" in html
+    assert "Open Gap" in html
+
+
+def test_pdf_html_contains_category_names(sample_spec, sample_data):
+    from visuals_engine.renderer import render_pdf_html
+    html = render_pdf_html(sample_spec, sample_data)
+    assert "capital" in html
+    assert "commercial" in html
+
+
+def test_pdf_html_omits_market_section_when_no_rows(sample_spec, sample_data):
+    from visuals_engine.renderer import render_pdf_html
+    html = render_pdf_html(sample_spec, sample_data)
+    assert "Readiness by Market" not in html
+
+
+def test_pdf_html_contains_subtitle_when_configured(sample_spec, sample_data):
+    sample_spec["dashboard"]["subtitle"] = "Client PDF snapshot."
+    from visuals_engine.renderer import render_pdf_html
+    html = render_pdf_html(sample_spec, sample_data)
+    assert "Client PDF snapshot." in html

@@ -1,7 +1,13 @@
+import importlib
+import importlib.util
 import json
 import subprocess
 import sys
 from pathlib import Path
+
+import pytest
+
+_XHTML2PDF_AVAILABLE = importlib.util.find_spec("xhtml2pdf") is not None
 
 SPEC_PATH = str(Path(__file__).parent.parent / "visuals_engine" / "specs" / "readiness_dashboard.yaml")
 
@@ -153,3 +159,57 @@ def test_cli_export_powerbi_without_client_context_still_passes(sample_store, tm
     result = _run(["export-powerbi", "--store", sample_store, "--output", str(tmp_path / "powerbi")])
     assert result.returncode == 0
     assert not (tmp_path / "powerbi" / "client_context.csv").exists()
+
+
+# --- build: PDF artifact ---
+
+
+def test_cli_build_summary_has_pdf_artifact_key(sample_store, tmp_path):
+    out = tmp_path / "out"
+    _run(["build", "--store", sample_store, "--spec", SPEC_PATH, "--output", str(out)])
+    data = json.loads((out / "visuals_summary.json").read_text())
+    assert "pdf_artifact" in data
+
+
+def test_cli_build_summary_has_pdf_status_key(sample_store, tmp_path):
+    out = tmp_path / "out"
+    _run(["build", "--store", sample_store, "--spec", SPEC_PATH, "--output", str(out)])
+    data = json.loads((out / "visuals_summary.json").read_text())
+    assert "pdf_status" in data
+    assert data["pdf_status"] in ("generated", "skipped")
+
+
+@pytest.mark.skipif(_XHTML2PDF_AVAILABLE, reason="xhtml2pdf is installed; test covers unavailable case")
+def test_cli_build_pdf_status_skipped_when_xhtml2pdf_unavailable(sample_store, tmp_path):
+    out = tmp_path / "out"
+    result = _run(["build", "--store", sample_store, "--spec", SPEC_PATH, "--output", str(out)])
+    assert result.returncode == 0, result.stderr
+    data = json.loads((out / "visuals_summary.json").read_text())
+    assert data["pdf_status"] == "skipped"
+    assert data["pdf_artifact"] is None
+
+
+@pytest.mark.skipif(_XHTML2PDF_AVAILABLE, reason="xhtml2pdf is installed; test covers unavailable case")
+def test_cli_build_no_pdf_file_when_xhtml2pdf_unavailable(sample_store, tmp_path):
+    out = tmp_path / "out"
+    _run(["build", "--store", sample_store, "--spec", SPEC_PATH, "--output", str(out)])
+    assert not (out / "readiness_dashboard.pdf").exists()
+
+
+@pytest.mark.skipif(_XHTML2PDF_AVAILABLE, reason="xhtml2pdf is installed; test covers unavailable case")
+def test_cli_build_html_still_created_when_pdf_skipped(sample_store, tmp_path):
+    out = tmp_path / "out"
+    result = _run(["build", "--store", sample_store, "--spec", SPEC_PATH, "--output", str(out)])
+    assert result.returncode == 0, result.stderr
+    assert (out / "readiness_dashboard.html").exists()
+
+
+@pytest.mark.skipif(not _XHTML2PDF_AVAILABLE, reason="xhtml2pdf not installed")
+def test_cli_build_creates_pdf_when_xhtml2pdf_available(sample_store, tmp_path):
+    out = tmp_path / "out"
+    result = _run(["build", "--store", sample_store, "--spec", SPEC_PATH, "--output", str(out)])
+    assert result.returncode == 0, result.stderr
+    assert (out / "readiness_dashboard.pdf").exists()
+    data = json.loads((out / "visuals_summary.json").read_text())
+    assert data["pdf_status"] == "generated"
+    assert data["pdf_artifact"] is not None

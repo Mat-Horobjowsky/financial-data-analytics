@@ -42,6 +42,7 @@ def main() -> None:
 def _run_build(store_path: str, spec_path: str, output_dir: str) -> None:
     import yaml
     from . import loader, renderer
+    from . import pdf as _pdf
 
     spec_file = Path(spec_path)
     if not spec_file.exists():
@@ -70,12 +71,23 @@ def _run_build(store_path: str, spec_path: str, output_dir: str) -> None:
     summary = renderer.render_summary(spec, data, store_path, spec_path)
 
     html_file = output_path / "readiness_dashboard.html"
-    json_file = output_path / "visuals_summary.json"
-
     html_file.write_text(html_content, encoding="utf-8")
-    json_file.write_text(json.dumps(summary, indent=2, default=str), encoding="utf-8")
-
     print(f"Dashboard: {html_file}")
+
+    pdf_file = output_path / "readiness_dashboard.pdf"
+    try:
+        pdf_html = renderer.render_pdf_html(spec, data)
+        _pdf.render_pdf(pdf_html, pdf_file)
+        summary["pdf_artifact"] = str(pdf_file)
+        summary["pdf_status"] = "generated"
+        print(f"PDF:       {pdf_file}")
+    except ImportError:
+        summary["pdf_artifact"] = None
+        summary["pdf_status"] = "skipped"
+        print("PDF:       skipped (xhtml2pdf not installed; pip install xhtml2pdf)")
+
+    json_file = output_path / "visuals_summary.json"
+    json_file.write_text(json.dumps(summary, indent=2, default=str), encoding="utf-8")
     print(f"Summary:   {json_file}")
 
 

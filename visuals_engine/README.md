@@ -14,7 +14,7 @@ Metrics Engine → Analytics Store → Visuals Engine → readiness_dashboard.ht
 
 ## CLI Usage
 
-### `build` — Render HTML dashboard
+### `build` — Render HTML and PDF dashboard
 
 ```bash
 visuals-engine build \
@@ -28,6 +28,16 @@ visuals-engine build \
 | `--store` | Yes | Path to `analytics.duckdb` |
 | `--spec`  | Yes | Path to dashboard spec YAML |
 | `--output`| Yes | Output directory (created if it does not exist) |
+
+PDF generation uses `xhtml2pdf` (optional). When installed, the build command writes both `readiness_dashboard.html` and `readiness_dashboard.pdf`. When not installed, HTML is written and PDF is skipped with a message. Install the PDF dependency with:
+
+```bash
+pip install "visuals_engine[pdf]"
+# or directly:
+pip install xhtml2pdf
+```
+
+> **Note:** PDF generation has been validated on Python 3.12. If `xhtml2pdf` is not installed or is unavailable in your environment, PDF output is skipped gracefully; HTML output is unaffected.
 
 ### `export-powerbi` — Export Power BI-ready CSVs
 
@@ -63,10 +73,11 @@ Category slugs are converted to friendly labels (e.g. `capital` → `Capital Rea
 ```
 outputs/visuals/readiness/
   readiness_dashboard.html    ← open in any browser, no internet required
+  readiness_dashboard.pdf     ← printable landscape snapshot (requires xhtml2pdf; skipped if unavailable)
   visuals_summary.json        ← machine-readable summary of what was rendered
 ```
 
-`visuals_summary.json` example:
+`visuals_summary.json` example (xhtml2pdf installed):
 
 ```json
 {
@@ -75,9 +86,13 @@ outputs/visuals/readiness/
   "sections_rendered": ["kpi_cards", "category_breakdown", "market_breakdown"],
   "sections_skipped": [],
   "validation_status": "passed_with_warnings",
+  "pdf_artifact": "outputs/visuals/readiness/readiness_dashboard.pdf",
+  "pdf_status": "generated",
   "generated_at": "2026-05-08T10:30:00+00:00"
 }
 ```
+
+When xhtml2pdf is not installed, `pdf_status` is `"skipped"` and `pdf_artifact` is `null`.
 
 ## Dashboard Sections
 
@@ -108,9 +123,11 @@ visuals_engine/
   cli.py        argument parsing — build and export-powerbi subcommands
   loader.py     DuckDB queries; returns plain Python dicts
   renderer.py   transforms loaded data into Jinja2 context; renders HTML + JSON
+  pdf.py        converts rendered PDF-template HTML to a PDF file (requires xhtml2pdf)
   exporter.py   Power BI CSV export; writes five CSVs from analytics.duckdb
   templates/
-    readiness_dashboard.html   Jinja2 template (self-contained CSS, no CDN)
+    readiness_dashboard.html       Jinja2 template (self-contained CSS, no CDN)
+    readiness_dashboard_pdf.html   PDF-optimized Jinja2 template (table layout, A4 landscape)
   specs/
     readiness_dashboard.yaml   dashboard definition
 ```

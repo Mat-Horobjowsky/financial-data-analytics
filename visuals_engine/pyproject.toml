@@ -21,6 +21,9 @@ visuals-engine = "visuals_engine.cli:main"
 dev = [
     "pytest>=7.0.0",
 ]
+pdf = [
+    "xhtml2pdf>=0.2.0",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
