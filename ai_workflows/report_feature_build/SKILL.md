@@ -40,7 +40,7 @@ The Report Engine may handle:
 - selecting report sections
 - formatting summary tables
 - generating narrative insights
-- exporting markdown, HTML, PDF-ready, or other static outputs
+- exporting Markdown, HTML, and PDF outputs where the PDF renderer is supported
 - organizing report artifacts
 - creating a reproducible report folder
 
@@ -97,6 +97,8 @@ outputs/
 - Do not make the report dependent on Power BI.
 - Keep text generation grounded in available metric outputs.
 - Flag missing data instead of hallucinating insights.
+- When logic affects Markdown, HTML, and PDF variants, put shared report logic in helpers (e.g. `insights.py`); keep renderer-specific code limited to formatting only.
+- For reusable dashboard layouts, interactive HTML dashboards, or Power BI export requests, direct the work to Visuals Engine instead.
 
 ## Output Format for Work Summary
 

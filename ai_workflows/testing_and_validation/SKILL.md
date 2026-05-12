@@ -18,6 +18,10 @@ Use this skill after:
 - changing Intake Engine
 - changing Metrics Engine
 - changing Report Engine
+- changing Analytics Store
+- changing Visuals Engine
+- changing Analytics Pipeline
+- changing Power BI export behavior
 - editing CLI behavior
 - changing package structure
 - adding outputs
@@ -54,6 +58,10 @@ python -m pytest
 python -m pytest tests/test_intake_engine.py
 python -m pytest tests/test_metrics_engine.py
 python -m pytest tests/test_report_engine.py
+python -m pytest tests/test_analytics_store.py
+python -m pytest tests/test_visuals_engine.py
+python -m pytest tests/test_analytics_pipeline.py
+python -m pytest tests/test_powerbi_export_contract.py
 ```
 
 Possible CLI checks:
@@ -62,6 +70,8 @@ Possible CLI checks:
 python -m intake_engine.cli --help
 python -m metrics_engine.cli --help
 python -m report_engine.cli --help
+python -m visuals_engine.cli --help
+python -m analytics_pipeline.cli --help
 ```
 
 Example build/run checks:
@@ -69,7 +79,21 @@ Example build/run checks:
 ```bash
 python -m metrics_engine.cli run --input <input_path> --output <output_path>
 python -m report_engine.cli build --input <metrics_output_path> --output <report_output_path>
+python -m visuals_engine.cli render --output <output_path>
+python -m analytics_pipeline.cli run --input <input_path> --output <output_path>
 ```
+
+## Artifact Validation
+
+For changes that produce generated artifacts, inspect the files directly:
+
+- **HTML dashboards**: open or inspect the file; confirm expected sections, tables, and values render correctly.
+- **Power BI export CSVs**: confirm expected files exist, columns match the contract in `docs/powerbi_export_contract.md`, and grain is correct.
+- **Power BI sidecar files**: confirm manifest or metadata files exist and reference the correct export files.
+- **PDF outputs**: confirm file is generated and not empty where PDF export is supported.
+- **Pipeline summary outputs**: confirm `pipeline_summary.json` or equivalent exists and contains expected stage results.
+
+For changes that affect orchestration or cross-engine artifact handoff, run the end-to-end pipeline flow and verify all stage outputs are produced correctly.
 
 ## Validation Summary Format
 

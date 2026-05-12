@@ -91,6 +91,16 @@ ai_workflows/report_feature_build/SKILL.md
 
 Use when adding, modifying, or debugging Report Engine functionality that turns Metrics Engine outputs into client-facing summaries, tables, charts, and report files.
 
+### Visuals Feature Build
+
+Path:
+
+```text
+ai_workflows/visuals_feature_build/SKILL.md
+```
+
+Use when adding, modifying, or debugging Visuals Engine functionality for static HTML dashboards, Power BI-ready CSV exports, and dashboard artifacts.
+
 ### Testing and Validation
 
 Path:
@@ -119,7 +129,7 @@ Path:
 ai_workflows/scope_discipline/SKILL.md
 ```
 
-Use whenever a task risks becoming too large, too abstract, or too far from the current Intake → Metrics → Report roadmap.
+Use whenever a task risks becoming too large, too abstract, or too far from the current engine stack.
 
 ## Documentation Discipline
 
@@ -144,6 +154,8 @@ Use whenever a task risks becoming too large, too abstract, or too far from the 
 - Do not modify `archive/` unless explicitly requested by the user.
 - Treat Power BI export CSVs as a stable downstream contract. Do not rename files, remove columns, change grain, or alter data types without updating `docs/powerbi_export_contract.md` and the contract validation tests.
 - When Report Engine logic affects both Markdown and HTML outputs, put shared business/report logic in helpers (e.g. `insights.py`) and keep renderer-specific code in `renderer.py` and `html.py` limited to formatting only.
+- Do not calculate business metrics or readiness logic in Visuals Engine. Visuals Engine renders, shapes, and exports already-trusted outputs; analytical logic belongs upstream.
+- When changing Analytics Pipeline stage inputs, flags, or artifacts, keep `pipeline_summary.json`, README guidance, and end-to-end tests aligned.
 
 ## Standard Response Format Before Editing
 

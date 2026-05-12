@@ -34,6 +34,8 @@ Use this skill when the user asks to:
 - Keep the CLI simple and reliable.
 - Build small, testable improvements.
 - Maintain compatibility with downstream Metrics Engine inputs.
+- Preserve the existing output contract unless the user explicitly requests a change.
+- Before adding or renaming output files, inspect current CLI behavior, tests, and docs to confirm the change is safe.
 
 ## Expected Responsibilities
 

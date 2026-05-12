@@ -23,7 +23,11 @@ Use this skill when the user asks to:
 - prepare a LinkedIn/project showcase
 - add screenshots
 - document tests
-- document Intake → Metrics → Report workflow
+- document the Intake → Metrics → Report → Analytics Store → Visuals / Power BI Export workflow
+- document Analytics Pipeline usage, flags, or artifact folders
+- document Visuals Engine outputs or dashboard artifacts
+- document or update the Power BI export contract or schema
+- document HTML or PDF report outputs
 
 ## Core Principles
 
@@ -114,7 +118,17 @@ Useful positioning:
 - Intake Engine cleans messy files.
 - Metrics Engine creates trusted KPI outputs.
 - Report Engine turns metrics into client-ready deliverables.
-- Future visual/dashboard/agent layers can consume the same trusted outputs.
+- Analytics Store persists metrics and report outputs into a queryable DuckDB store.
+- Visuals Engine renders static HTML dashboards and Power BI-ready CSV exports.
+- Analytics Pipeline orchestrates the full workflow end-to-end via a single CLI.
+
+## Public Contract Reminder
+
+Before completing a documentation update, confirm whether any public output contracts changed:
+
+- Power BI export schema, file names, grain, or data types → update `docs/powerbi_export_contract.md`.
+- Analytics Pipeline artifact folders or stage outputs → update pipeline README and usage examples.
+- Report or dashboard deliverables → update engine README and any relevant output examples.
 
 ## Stop Conditions
 

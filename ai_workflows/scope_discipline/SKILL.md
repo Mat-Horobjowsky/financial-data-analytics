@@ -58,18 +58,19 @@ If the answer is mostly no, do not build it yet.
 
 ## Preferred Build Order
 
-Prefer this order:
+Given the repo's current maturity, prefer this order:
 
-1. Working file-based CLI
-2. Tests
-3. Clean outputs
-4. Documentation
-5. Small integration wrapper
-6. Static report/demo
-7. Optional GUI
-8. Optional database layer
-9. Optional natural-language/agent layer
-10. Optional APIs/cloud deployment
+1. Preserve stable engine and output contracts.
+2. Improve correctness, tests, and validation.
+3. Strengthen end-to-end pipeline orchestration.
+4. Improve reusable client-facing outputs: Report, Visuals, Power BI export.
+5. Improve documentation and demo packaging.
+6. Add only small supporting utilities needed for reuse.
+7. Consider GUI / richer interfaces later.
+8. Consider natural-language agents later.
+9. Consider APIs / cloud deployment later.
+
+Do not create a second Analytics Store, second dashboard layer, or parallel orchestration path when Analytics Store, Visuals Engine, or Analytics Pipeline already provide the correct extension point.
 
 ## Allowed Complexity
 

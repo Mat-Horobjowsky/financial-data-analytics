@@ -81,14 +81,23 @@ Example:
 
 Metrics outputs should be predictable and machine-readable.
 
-Preferred outputs may include:
+Current output contract:
 
 ```text
-wide_metrics.csv
 long_metrics.csv
-metric_definitions.csv
-validation_summary.json
+wide_metrics.csv
+metric_dictionary.csv
+validation_report.json
+metrics_output.xlsx
 ```
+
+Do not rename, remove, or change the grain or column types of these files casually. Before changing any output file name, column, or grain, inspect all downstream consumers:
+
+- Report Engine
+- Analytics Store
+- Visuals Engine
+- Power BI exports
+- tests
 
 ## Design Rules
 

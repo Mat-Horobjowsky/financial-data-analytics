@@ -20,7 +20,8 @@ Use this skill when the user asks to:
 - debug a command or import error
 - decide what to build next
 - propose an implementation plan
-- modify Intake Engine, Metrics Engine, Report Engine, or shared tooling
+- modify Intake Engine, Metrics Engine, Report Engine, Analytics Store, Visuals Engine, Analytics Pipeline, or shared tooling
+- make Power BI export changes or inspect the export contract
 
 ## Core Principles
 
@@ -39,6 +40,11 @@ Use this skill when the user asks to:
    - `intake_engine/`
    - `metrics_engine/`
    - `report_engine/`
+   - `analytics_store/`
+   - `visuals_engine/`
+   - `analytics_pipeline/`
+   - `docs/powerbi_export_contract.md` (when export work is relevant)
+   - contract tests (when Power BI export behavior is involved)
    - shared utilities
    - tests
    - docs
