@@ -18,7 +18,7 @@ Clean data → Trusted metrics → Visuals anywhere
 |---|---|---|---|
 | **Intake Engine** | v1.x | Raw CSV / XLSX (messy, unstructured) | Clean CSV, HTML quality report, validation JSON, profiling JSON |
 | **Metrics Engine** | v0.1 | Clean CSV | Long + wide KPI tables, metric dictionary, validation report, Excel workbook; alternate metric packs via `--config` / `--schema` |
-| **Report Engine** | v1.2 | Metrics Engine output directory | Markdown + HTML reports, summary JSON, insights JSON |
+| **Report Engine** | v1.4 | Metrics Engine output directory | Markdown + HTML reports, summary JSON, insights JSON; optional PDF via `--pdf` |
 | **Analytics Store** | v0.1 | Metrics Engine output + Report Engine output (optional) | `analytics.duckdb` — 6 tables, 3 views |
 | **Visuals Engine** | v0.1 | `analytics.duckdb` | Self-contained HTML dashboard, `visuals_summary.json` |
 | **Analytics Pipeline** | v0.2 | Raw CSV / XLSX | All engine outputs + `pipeline_summary.json`; optional store, visuals, and Power BI export stages via `--with-store` / `--with-visuals` / `--with-powerbi-export`; named Excel sheet selection via `--sheet`; alternate metric configs via `--metrics-config` / `--schema-config` |
@@ -314,14 +314,16 @@ It takes validated metric outputs and turns them into structured deliverables th
 ### Key Features
 
 - Reads Metrics Engine output directory
-- Built-in report templates (`full_report`, `executive_summary`, `metrics_detail`)
+- Built-in report templates (`full_report`, `executive_summary`, `metrics_detail`, `readiness_summary`)
 - `--template` CLI flag to select the report scope
 - KPI Snapshot — latest value per metric, most recent period only
 - Key Insights — deterministic, data-grounded period-over-period bullets
 - Metrics Summary — formatted long-format table with optional period-over-period columns
 - Metric Dictionary — client-friendly column headers
+- `readiness_summary` template — readiness-specific sections (Snapshot, Open Gaps, Critical Items, Readiness by Segment, Recommended Next Steps); deterministic category-specific recommendations
 - Self-contained HTML report with inline CSS
 - Markdown report
+- Optional PDF export via `--pdf` (`report_engine[pdf]` optional dependency)
 - `summary.json` — machine-readable metadata including selected template name
 - `insights.json` — structured insight records per metric
 - CLI workflow
@@ -339,7 +341,8 @@ pip install -e report_engine
 python -m report_engine.cli build \
   --input <metrics_output_dir> \
   --output <output_dir> \
-  [--template full_report|executive_summary|metrics_detail]
+  [--template full_report|executive_summary|metrics_detail|readiness_summary] \
+  [--pdf]
 ```
 
 ### Templates
@@ -349,6 +352,7 @@ python -m report_engine.cli build \
 | `full_report` (default) | Header, Validation, KPI Snapshot, Key Insights, Metrics Summary, Metric Dictionary |
 | `executive_summary` | Header, Validation, KPI Snapshot, Key Insights |
 | `metrics_detail` | Header, Validation, Metrics Summary, Metric Dictionary |
+| `readiness_summary` | Header, Validation, Readiness Snapshot, Open Gaps, Critical Items, Readiness by Segment, Recommended Next Steps, Metric Dictionary |
 
 `summary.json` and `insights.json` are always written regardless of selected template.
 
@@ -360,6 +364,7 @@ python -m report_engine.cli build \
 | `report.html` | Self-contained HTML report with inline CSS |
 | `summary.json` | Machine-readable summary: status, metric count, date range, template name |
 | `insights.json` | Deterministic period-over-period insight records |
+| `report.pdf` | PDF export of `report.html` — only created when `--pdf` is passed |
 
 ---
 
@@ -590,6 +595,8 @@ Active development is focused on `intake_engine/`, `metrics_engine/`, `report_en
 - **Deterministic demo context generation** — `build_powerbi_export.py` pre-processes a multi-sheet client intake workbook into a flat `PowerBI_Export` sheet and writes `client_context.csv` alongside it; all demo context values are deterministic and reproducible
 - **Report Engine PDF Export** — `--pdf` flag on `report-engine build` generates `report.pdf` from the rendered HTML; `xhtml2pdf` optional dependency; fails clearly if library is not installed
 - **Report Engine readiness template** — `--template readiness_summary` renders client-facing readiness sections (Readiness Snapshot, Open Gaps, Critical Items, Readiness by Segment, Recommended Next Steps); detects `date_category`/`date_market` rollup rows for segment breakdowns; falls back gracefully on generic data
+- **Report Engine — deterministic readiness recommendations** — Recommended Next Steps section generates category-specific, prioritised recommendations from `readiness_completion_pct`, `open_gap_count`, `critical_item_count`, and segment data; rules include critical-blocker escalation, highest-gap and lowest-completion category callouts, RFP hold threshold (< 60%), and market-ready proceed signal (≥ 80%, zero criticals); logic lives in `insights.py` and is shared by both Markdown and HTML renderers
+- **Power BI export contract documentation and validation tests** — schema contract for all six Power BI CSV files documented in `docs/powerbi_export_contract.md`; 27 contract tests added to `analytics_pipeline/tests/` enforcing required files, required columns, no-duplicate grain keys, all four required KPI metric IDs, and `client_context.csv` copy behaviour
 
 ### Next Priorities
 

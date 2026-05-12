@@ -12,7 +12,7 @@ Clean data → trusted metrics → visuals anywhere
 
 ## Active Product Stack
 
-The active work in this repo is organized around four areas:
+The active work in this repo is organized around eight areas:
 
 1. **Intake Engine** (`intake_engine/`)
    - Converts messy CSV/XLSX files into clean, analytics-ready datasets.
@@ -23,10 +23,23 @@ The active work in this repo is organized around four areas:
 3. **Report Engine** (`report_engine/`)
    - Turns trusted metrics into client-facing reports, summaries, and deliverables.
 
-4. **AI Workflows** (`ai_workflows/`)
+4. **Analytics Store** (`analytics_store/`)
+   - Persists metrics and report outputs into a queryable DuckDB store.
+
+5. **Visuals Engine** (`visuals_engine/`)
+   - Renders static HTML dashboards and Power BI-ready CSV exports from the analytics store.
+
+6. **Analytics Pipeline** (`analytics_pipeline/`)
+   - Orchestrates Intake → Metrics → Report → Store → Visuals / Power BI Export as a single CLI workflow.
+
+7. **Power BI Export** (stage within `visuals_engine/visuals_engine/exporter.py`)
+   - Produces the CSV files consumed by the reusable Power BI readiness dashboard template.
+   - Schema contract documented in `docs/powerbi_export_contract.md`.
+
+8. **AI Workflows** (`ai_workflows/`)
    - Workflow skill files that guide AI-assisted development on the engines above.
 
-Database support (e.g. DuckDB) may exist in early form within some engines, but should remain secondary to the file-based Intake → Metrics → Report workflow until that workflow is stable, tested, and demo-ready. Future layers such as dashboards, GUI tools, semantic analytics, or natural-language agents should not be added prematurely.
+Future layers such as GUI tools, semantic analytics, or natural-language agents should not be added prematurely.
 
 ## Archive
 
@@ -108,6 +121,12 @@ ai_workflows/scope_discipline/SKILL.md
 
 Use whenever a task risks becoming too large, too abstract, or too far from the current Intake → Metrics → Report roadmap.
 
+## Documentation Discipline
+
+- Update the relevant **engine README** when a user-facing engine behavior changes (new CLI flag, new output file, changed column name, new template, etc.).
+- Update the **root README** only for stack-level changes: demo workflow, pipeline usage, install steps, output folder structure, or portfolio-facing descriptions.
+- Do **not** update any README for internal-only refactors, test-only changes, temporary debugging, or cosmetic edits that have no user-visible effect.
+
 ## Default Working Rules
 
 - Inspect before editing.
@@ -123,6 +142,8 @@ Use whenever a task risks becoming too large, too abstract, or too far from the 
 - Make outputs predictable and easy to inspect.
 - Be honest about uncertainty and failing tests.
 - Do not modify `archive/` unless explicitly requested by the user.
+- Treat Power BI export CSVs as a stable downstream contract. Do not rename files, remove columns, change grain, or alter data types without updating `docs/powerbi_export_contract.md` and the contract validation tests.
+- When Report Engine logic affects both Markdown and HTML outputs, put shared business/report logic in helpers (e.g. `insights.py`) and keep renderer-specific code in `renderer.py` and `html.py` limited to formatting only.
 
 ## Standard Response Format Before Editing
 
@@ -167,7 +188,7 @@ After changes, respond with:
 When in doubt, choose the path that strengthens the current stack:
 
 ```text
-Intake Engine → Metrics Engine → Report Engine
+Intake Engine → Metrics Engine → Report Engine → Analytics Store → Visuals / Power BI Export
 ```
 
 Avoid building a broad analytics platform before the file-based workflow is stable, tested, documented, and demo-ready.

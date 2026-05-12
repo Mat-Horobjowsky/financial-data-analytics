@@ -32,13 +32,14 @@ analytics-pipeline run \
 | `--input` | *(required)* | Raw input file (CSV or XLSX) |
 | `--output` | `outputs/pipeline` | Pipeline output root directory |
 | `--with-time` | off | Enable prior-period time analysis in Metrics Engine |
-| `--template` | `full_report` | Report template (`full_report`, `executive_summary`, `metrics_detail`) |
+| `--template` | `full_report` | Report template (`full_report`, `executive_summary`, `metrics_detail`, `readiness_summary`) |
 | `--with-store` | off | Run Analytics Store stage after report; creates `store/analytics.duckdb` |
 | `--with-visuals` | off | Run Visuals Engine after store; creates `visuals/readiness_dashboard.html`; implies `--with-store` |
 | `--with-powerbi-export` | off | Run Power BI CSV export after store; creates `powerbi/*.csv`; implies `--with-store` |
 | `--metrics-config` | `metrics_engine/config/metrics.yaml` | Custom Metrics Engine config YAML (enables alternate metric packs) |
 | `--schema-config` | `metrics_engine/config/schema.yaml` | Custom Metrics Engine schema YAML |
 | `--sheet` | *(none)* | Excel sheet name passed to Intake Engine (optional, for XLSX files with multiple sheets) |
+| `--client-context` | *(none)* | Path to `client_context.csv`; copied into `powerbi/` when `--with-powerbi-export` is used |
 
 ## Usage examples
 
@@ -102,9 +103,12 @@ Produces `outputs/demo_client/pipeline/visuals/readiness_dashboard.html` and `ou
 │   ├── readiness_by_category.csv
 │   ├── readiness_by_market.csv
 │   ├── validation_summary.csv
-│   └── metric_dictionary.csv
+│   ├── metric_dictionary.csv
+│   └── client_context.csv          # optional — copied when --client-context is provided
 └── pipeline_summary.json
 ```
+
+The CSV schema for the `powerbi/` output is a stable downstream contract. Column names, file names, grain, and data types must not change without updating `docs/powerbi_export_contract.md` and the contract validation tests in `tests/analytics_pipeline/test_powerbi_export_contract.py`.
 
 ### pipeline_summary.json
 
@@ -179,7 +183,7 @@ This installs `analytics_pipeline` plus all five engine packages (declared as lo
 py -m pytest analytics_pipeline/tests/
 ```
 
-Expected: **173 passed, 1 skipped** (the env-gated integration test is skipped by default).
+Expected: **214 passed, 1 skipped** (the env-gated integration test is skipped by default).
 
 To run the end-to-end readiness integration test (slower, requires all engines installed):
 

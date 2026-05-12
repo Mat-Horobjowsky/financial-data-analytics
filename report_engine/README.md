@@ -54,6 +54,16 @@ Designed for readiness-specific Metrics Engine output. Detects the following met
 
 Falls back gracefully if these metrics are not present. Renders segment breakdowns (By Category, By Market) when `date_category` or `date_market` rollup rows are available in `long_metrics.csv`.
 
+**Recommended Next Steps** generates deterministic, prioritised recommendations from the available readiness data. Rules applied in order:
+
+1. If `critical_item_count > 0` — escalate critical blockers (severity: critical).
+2. Category with the highest `open_gap_count` — category-specific gap recommendation (severity: high).
+3. Category with the lowest `readiness_completion_pct` — category-specific completion recommendation (severity: high).
+4. If overall `readiness_completion_pct < 60%` — recommend holding transaction / RFP outreach (severity: medium).
+5. If overall `readiness_completion_pct ≥ 80%` and `critical_item_count == 0` — recommend preparing market-facing materials (severity: low).
+
+Known categories with tailored recommendation text: `power`, `fiber`, `permitting`, `site_control`, `commercial`, `capital`. Unknown categories use a generic fallback. The recommendation logic lives in `report_engine/insights.py` (`build_readiness_recommendations`) and is shared by both the Markdown and HTML renderers.
+
 Example:
 
 ```bash
