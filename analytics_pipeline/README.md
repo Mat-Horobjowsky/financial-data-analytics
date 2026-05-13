@@ -33,13 +33,15 @@ analytics-pipeline run \
 | `--output` | `outputs/pipeline` | Pipeline output root directory |
 | `--with-time` | off | Enable prior-period time analysis in Metrics Engine |
 | `--template` | `full_report` | Report template (`full_report`, `executive_summary`, `metrics_detail`, `readiness_summary`) |
+| `--pdf` | off | Generate `report/report.pdf` from the Report Engine output (requires `report_engine[pdf]`) |
+| `--report-title` | *(none)* | Title forwarded to Report Engine `--title`; used as the PDF header. Recommended with `--template readiness_summary --pdf`. Defaults to the input folder name when omitted. |
 | `--with-store` | off | Run Analytics Store stage after report; creates `store/analytics.duckdb` |
 | `--with-visuals` | off | Run Visuals Engine after store; creates `visuals/readiness_dashboard.html`; implies `--with-store` |
 | `--with-powerbi-export` | off | Run Power BI CSV export after store; creates `powerbi/*.csv`; implies `--with-store` |
 | `--metrics-config` | `metrics_engine/config/metrics.yaml` | Custom Metrics Engine config YAML (enables alternate metric packs) |
 | `--schema-config` | `metrics_engine/config/schema.yaml` | Custom Metrics Engine schema YAML |
 | `--sheet` | *(none)* | Excel sheet name passed to Intake Engine (optional, for XLSX files with multiple sheets) |
-| `--client-context` | *(none)* | Path to `client_context.csv`; copied into `powerbi/` when `--with-powerbi-export` is used |
+| `--client-context` | *(none)* | Path to `client_context.csv`; injects client name, project name, and project ID into the Visuals Engine dashboard header when `--with-visuals` is used, and copies the file into `powerbi/` when `--with-powerbi-export` is used |
 
 ## Usage examples
 
@@ -61,13 +63,13 @@ Pass `--metrics-config` and `--schema-config` to run any alternate metric pack. 
 ```bash
 analytics-pipeline run \
   --input metrics_engine/data/sample_readiness.csv \
-  --output outputs/pipeline_readiness \
+  --output outputs/demo_readiness \
   --metrics-config metrics_engine/config/readiness_metrics.yaml \
   --schema-config metrics_engine/config/readiness_schema.yaml \
   --with-visuals
 ```
 
-Produces `outputs/pipeline_readiness/visuals/readiness_dashboard.html`.
+Produces `outputs/demo_readiness/visuals/readiness_dashboard.html`.
 
 ### Readiness demo from Excel workbook
 
@@ -93,12 +95,15 @@ analytics-pipeline run \
   --output outputs/demo_readiness_client \
   --metrics-config metrics_engine/config/readiness_metrics.yaml \
   --schema-config metrics_engine/config/readiness_schema.yaml \
+  --template readiness_summary \
+  --pdf \
+  --report-title "Demo AI Infrastructure Co." \
   --with-visuals \
   --with-powerbi-export \
   --client-context examples/readiness_demo/client_context.csv
 ```
 
-Produces `outputs/demo_readiness_client/visuals/readiness_dashboard.html` and `outputs/demo_readiness_client/powerbi/*.csv`.
+Produces `outputs/demo_readiness_client/report/report.pdf` (polished one-page landscape readiness executive report) and `report.html` (polished client-facing readiness page: dark header, KPI cards, Executive Assessment, Recommended Next Steps, segment tables — no generic Validation block or Metric Dictionary), `outputs/demo_readiness_client/visuals/readiness_dashboard.html` (with client/project identity injected in the header from `--client-context`), and `outputs/demo_readiness_client/powerbi/*.csv`.
 
 ## Output structure
 
@@ -107,6 +112,7 @@ Produces `outputs/demo_readiness_client/visuals/readiness_dashboard.html` and `o
 ├── intake/          # Intake Engine outputs (clean CSV, validation JSON, ...)
 ├── metrics/         # Metrics Engine outputs (long/wide metrics, metric dictionary, ...)
 ├── report/          # Report Engine outputs (report.html, report.md, insights.json, ...)
+│   └── report.pdf   # optional — only created when --pdf is passed
 ├── store/           # Analytics Store output — only created when --with-store is passed
 │   └── analytics.duckdb
 ├── visuals/         # Visuals Engine output — only created when --with-visuals is passed
@@ -134,14 +140,16 @@ The CSV schema for the `powerbi/` output is a stable downstream contract. Column
   "generated_at": "...",
   "input_path": "examples/readiness_demo/client_intake_template.xlsx",
   "sheet": "PowerBI_Export",
-  "output_dir": "outputs/demo_client/pipeline",
+  "output_dir": "outputs/demo_readiness_client",
   "with_time": false,
   "with_store": true,
   "with_visuals": true,
   "with_powerbi_export": true,
+  "with_pdf": true,
+  "report_title": "Demo AI Infrastructure Co.",
   "metrics_config_path": "/abs/path/to/metrics_engine/config/readiness_metrics.yaml",
   "schema_config_path": "/abs/path/to/metrics_engine/config/readiness_schema.yaml",
-  "template": "full_report",
+  "template": "readiness_summary",
   "status": "success",
   "stages": {
     "intake":        {"status": "success", "command": "...", "output_dir": "...", "generated_files": [...]},

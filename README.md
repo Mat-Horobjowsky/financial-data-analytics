@@ -216,19 +216,22 @@ This writes two files (both ignored by `.gitignore` — local only):
 analytics-pipeline run \
   --input examples/readiness_demo/client_intake_template_demo.xlsx \
   --sheet PowerBI_Export \
-  --output outputs/demo_client \
+  --output outputs/demo_readiness_client \
   --metrics-config metrics_engine/config/readiness_metrics.yaml \
   --schema-config metrics_engine/config/readiness_schema.yaml \
+  --template readiness_summary \
+  --pdf \
+  --report-title "Demo AI Infrastructure Co." \
   --with-visuals \
   --with-powerbi-export \
   --client-context examples/readiness_demo/client_context.csv
 ```
 
-The `--sheet` flag passes the named Excel sheet directly to the Intake Engine. The `--client-context` flag copies `client_context.csv` into the `powerbi/` output directory alongside the exported metric CSVs — ready for Power BI template consumption.
+The `--sheet` flag passes the named Excel sheet directly to the Intake Engine. The `--template readiness_summary --pdf --report-title` flags generate the polished one-page landscape readiness executive PDF at `outputs/demo_readiness_client/report/report.pdf`; `report.html` renders as a polished client-facing readiness page with a dark header, KPI cards, Executive Assessment, and Recommended Next Steps. The `--client-context` flag injects client name, project name, and project ID as an identity line in the Visuals Engine dashboard header, and copies `client_context.csv` into the `powerbi/` output directory alongside the exported metric CSVs.
 
 ### Dashboard output
 
-`readiness_dashboard.html` opens offline in any browser. It renders KPI cards, category breakdowns, and market breakdowns from `analytics.duckdb`. Dashboard title, subtitle, KPI labels, and category display names are configurable in `readiness_dashboard.yaml`. No external dependencies, no server required.
+`readiness_dashboard.html` opens offline in any browser. It renders KPI cards, category breakdowns, and market breakdowns from `analytics.duckdb`. When `--client-context` is provided, the dashboard header displays a client/project identity line (e.g. `Demo AI Infrastructure Co. · Midwest AI Campus Requirement · DEMO-READY-001`). Dashboard title, subtitle, KPI labels, and category display names are configurable in `readiness_dashboard.yaml`. The dashboard footer shows source and generation metadata only — no validation warnings. No external dependencies, no server required.
 
 ---
 
@@ -343,7 +346,7 @@ It takes validated metric outputs and turns them into structured deliverables th
 - Key Insights — deterministic, data-grounded period-over-period bullets
 - Metrics Summary — formatted long-format table with optional period-over-period columns
 - Metric Dictionary — client-friendly column headers
-- `readiness_summary` template — readiness-specific sections (Snapshot, Open Gaps, Critical Items, Readiness by Segment, Recommended Next Steps); deterministic category-specific recommendations
+- `readiness_summary` template — polished client-facing `report.html` (dark header, KPI cards, Executive Assessment, Recommended Next Steps, segment tables; no generic Validation block or Metric Dictionary); full section layout in `report.md`; deterministic category-specific recommendations
 - Self-contained HTML report with inline CSS
 - Markdown report
 - Optional PDF export via `--pdf` (`report_engine[pdf]` optional dependency)
@@ -375,7 +378,7 @@ python -m report_engine.cli build \
 | `full_report` (default) | Header, Validation, KPI Snapshot, Key Insights, Metrics Summary, Metric Dictionary |
 | `executive_summary` | Header, Validation, KPI Snapshot, Key Insights |
 | `metrics_detail` | Header, Validation, Metrics Summary, Metric Dictionary |
-| `readiness_summary` | Header, Validation, Readiness Snapshot, Open Gaps, Critical Items, Readiness by Segment, Recommended Next Steps, Metric Dictionary |
+| `readiness_summary` | `report.md`: Header, Validation, Readiness Snapshot, Open Gaps, Critical Items, Readiness by Segment, Recommended Next Steps, Metric Dictionary. `report.html`: polished client-facing layout (dark header, KPI cards, Executive Assessment, Recommended Next Steps, segment tables — no Validation block or Metric Dictionary) |
 
 `summary.json` and `insights.json` are always written regardless of selected template.
 
@@ -425,13 +428,15 @@ analytics-pipeline run \
 | `--output` | `outputs/pipeline` | Pipeline output root directory |
 | `--sheet` | *(none)* | Excel sheet name passed to Intake Engine (for multi-sheet XLSX files) |
 | `--with-time` | off | Enable prior-period time analysis in Metrics Engine |
-| `--template` | `full_report` | Report template (`full_report`, `executive_summary`, `metrics_detail`) |
+| `--template` | `full_report` | Report template (`full_report`, `executive_summary`, `metrics_detail`, `readiness_summary`) |
+| `--pdf` | off | Generate `report/report.pdf` from the Report Engine output (requires `report_engine[pdf]`) |
+| `--report-title` | *(none)* | Title forwarded to Report Engine `--title`; used as the PDF header. Recommended with `--template readiness_summary --pdf`. |
 | `--with-store` | off | Run Analytics Store stage after report; creates `store/analytics.duckdb` |
 | `--with-visuals` | off | Run Visuals Engine after store; creates `visuals/readiness_dashboard.html`; implies `--with-store` |
 | `--with-powerbi-export` | off | Run Power BI CSV export after store; creates `powerbi/*.csv`; implies `--with-store` |
 | `--metrics-config` | `metrics_engine/config/metrics.yaml` | Custom Metrics Engine config YAML (enables alternate metric packs) |
 | `--schema-config` | `metrics_engine/config/schema.yaml` | Custom Metrics Engine schema YAML |
-| `--client-context` | *(none)* | Path to `client_context.csv`; copied into `powerbi/` when `--with-powerbi-export` is used |
+| `--client-context` | *(none)* | Path to `client_context.csv`; injects client name, project name, and project ID into the Visuals Engine dashboard header when `--with-visuals` is used, and copies the file into `powerbi/` when `--with-powerbi-export` is used |
 
 `pipeline_summary.json` records all inputs, resolved config paths, and stage results so any run can be audited or replayed exactly.
 
@@ -537,6 +542,7 @@ The Visuals Engine closes the loop from raw data to visual output. It reads the 
 - Reads `analytics.duckdb` via DuckDB Python library
 - YAML dashboard spec — defines sections, metrics, rollup levels, and segment columns
 - Configurable dashboard title and subtitle in YAML spec
+- Client/project identity injection via `--client-context` — renders client name, project name, and project ID in the dashboard header without modifying the YAML spec
 - KPI label and description overrides per metric in YAML spec
 - Category display name mapping in YAML spec — human-readable labels without code changes
 - KPI cards — latest value per metric, formatted by unit
@@ -612,7 +618,7 @@ Active development is focused on `intake_engine/`, `metrics_engine/`, `report_en
 - **Visuals Engine v0.1** — YAML-spec-driven HTML dashboard generator; reads `analytics.duckdb` directly; KPI cards, category and market breakdowns; self-contained offline HTML; `visuals_summary.json`
 - **Analytics Pipeline v0.2 (visuals + config flags)** — `--with-visuals` runs Visuals Engine as a fifth stage; `--metrics-config` and `--schema-config` enable any metric pack through the full pipeline; `--with-visuals` implies `--with-store`
 - **End-to-End Pipeline** — full Intake → Metrics → Report → Store → Visuals workflow on both data center KPIs and readiness metrics
-- **Readiness demo prototype** — fictional client intake workbook (`NovaTech Systems / NVT-2025-NAM`); `PowerBI_Export` sheet with flat requirement-per-row schema; Intake Engine `--sheet` flag selects the named sheet; two-step Intake → Pipeline workflow validated end-to-end
+- **Readiness demo prototype** — fictional client intake workbook (`Demo AI Infrastructure Co. / DEMO-READY-001`); `PowerBI_Export` sheet with flat requirement-per-row schema; Intake Engine `--sheet` flag selects the named sheet; two-step Intake → Pipeline workflow validated end-to-end
 - **Visuals Engine — dashboard polish** — configurable `title`, `subtitle`, `kpi_labels`, `kpi_descriptions`, and `category_labels` in YAML spec; client-friendly footer; human-readable KPI and category labels without code changes
 - **Power BI Export stage** — `--with-powerbi-export` flag adds a sixth pipeline stage; exports five flat CSVs (`readiness_kpis`, `readiness_by_category`, `readiness_by_market`, `validation_summary`, `metric_dictionary`) for a reusable Power BI template; `--client-context` flag copies project metadata CSV into the export directory
 - **Readiness workbook builder** (`readiness_workbook/`) — `readiness-workbook build` pre-processes a multi-sheet client intake workbook into a flat `PowerBI_Export` sheet and writes `client_context.csv` alongside it; all demo context values are deterministic and reproducible
@@ -620,6 +626,9 @@ Active development is focused on `intake_engine/`, `metrics_engine/`, `report_en
 - **Report Engine readiness template** — `--template readiness_summary` renders client-facing readiness sections (Readiness Snapshot, Open Gaps, Critical Items, Readiness by Segment, Recommended Next Steps); detects `date_category`/`date_market` rollup rows for segment breakdowns; falls back gracefully on generic data
 - **Report Engine — deterministic readiness recommendations** — Recommended Next Steps section generates category-specific, prioritised recommendations from `readiness_completion_pct`, `open_gap_count`, `critical_item_count`, and segment data; rules include critical-blocker escalation, highest-gap and lowest-completion category callouts, RFP hold threshold (< 60%), and market-ready proceed signal (≥ 80%, zero criticals); logic lives in `insights.py` and is shared by both Markdown and HTML renderers
 - **Power BI export contract documentation and validation tests** — schema contract for all six Power BI CSV files documented in `docs/powerbi_export_contract.md`; 27 contract tests added to `analytics_pipeline/tests/` enforcing required files, required columns, no-duplicate grain keys, all four required KPI metric IDs, and `client_context.csv` copy behaviour
+- **Visuals Engine — client identity injection** — `--client-context` flag on `visuals-engine build` reads `client_name`, `project_name`, and `project_id` from `client_context.csv` and renders a client/project identity line in both HTML and PDF dashboard headers; YAML spec remains generic and reusable; forwarded automatically by `analytics-pipeline run --with-visuals --client-context`
+- **Report Engine — polished readiness HTML** — `--template readiness_summary` now produces a client-facing `report.html` with dark header, KPI cards, Executive Assessment, Recommended Next Steps, and segment tables; generic Validation block and Metric Dictionary removed from HTML output; PDF and Markdown outputs unchanged
+- **Visuals Engine — dashboard footer polish** — readiness dashboard HTML footer displays source and generation metadata only; validation warning counts removed from the client-facing footer
 
 ### Next Priorities
 

@@ -39,11 +39,13 @@ The `--template` flag selects which sections appear in `report.md` and `report.h
 
 `summary.json` and `insights.json` are always written regardless of selected template.
 
+> **Note — `readiness_summary` HTML layout:** For this template, `report.html` renders a polished client-facing page rather than the generic section-based layout used by other templates. It includes a dark header, KPI cards, Executive Assessment, Recommended Next Steps, Open Gaps, Critical Items, and segment breakdown tables. The generic Validation block and Metric Dictionary are not included in `report.html`; they remain in `report.md`.
+
 The selected template name is recorded in `summary.json` under the `"template"` key.
 
 ### readiness_summary
 
-Designed for readiness-specific Metrics Engine output. Detects the following metric IDs and renders client-facing readiness language:
+Designed for readiness-specific Metrics Engine output. `report.html` renders a polished client-facing page (dark header, KPI cards, Executive Assessment, Recommended Next Steps, and segment tables). `report.md` renders the full section list above. Detects the following metric IDs and renders client-facing readiness language:
 
 | Metric ID | Label |
 |---|---|

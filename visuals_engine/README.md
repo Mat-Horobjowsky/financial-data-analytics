@@ -28,6 +28,27 @@ visuals-engine build \
 | `--store` | Yes | Path to `analytics.duckdb` |
 | `--spec`  | Yes | Path to dashboard spec YAML |
 | `--output`| Yes | Output directory (created if it does not exist) |
+| `--client-context` | No | Path to `client_context.csv`; injects client name, project name, and project ID as an identity line in the dashboard header |
+
+#### Client identity injection
+
+When `--client-context` is provided, the dashboard header renders a client/project identity line beneath the dashboard title:
+
+```
+Demo AI Infrastructure Co. · Midwest AI Campus Requirement · DEMO-READY-001
+```
+
+This reads `client_name`, `project_name`, and `project_id` from the first row of `client_context.csv`. The identity line appears in both the HTML and PDF outputs. When omitted, the header renders without an identity line. The dashboard YAML spec is not modified — client identity is injected at render time only.
+
+**Example with client context:**
+
+```bash
+visuals-engine build \
+  --store outputs/demo_readiness_client/store/analytics.duckdb \
+  --spec visuals_engine/visuals_engine/specs/readiness_dashboard.yaml \
+  --output outputs/demo_readiness_client/visuals \
+  --client-context examples/readiness_demo/client_context.csv
+```
 
 PDF generation uses `xhtml2pdf` (optional). When installed, the build command writes both `readiness_dashboard.html` and `readiness_dashboard.pdf`. When not installed, HTML is written and PDF is skipped with a message. Install the PDF dependency with:
 
@@ -45,8 +66,8 @@ Reads `analytics.duckdb` and writes clean, flat CSVs that a Power BI template ca
 
 ```bash
 visuals-engine export-powerbi \
-  --store outputs/demo_client/pipeline/store/analytics.duckdb \
-  --output outputs/demo_client/pipeline/powerbi
+  --store outputs/demo_readiness_client/store/analytics.duckdb \
+  --output outputs/demo_readiness_client/powerbi
 ```
 
 | Argument | Required | Description |
@@ -144,7 +165,6 @@ pytest
 
 - Charts are CSS progress bars — no interactivity. Interactive charts (Chart.js) are deferred to v0.2.
 - Only one template is supported: `readiness_dashboard.html`. Multiple templates are deferred.
-- Pipeline integration (`analytics-pipeline run`) is not yet wired. Run `visuals-engine build` directly after `analytics-store build`.
 
 ## Upstream Integration
 
