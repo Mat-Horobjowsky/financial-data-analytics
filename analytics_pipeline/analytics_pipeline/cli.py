@@ -6,6 +6,7 @@ from pathlib import Path
 
 from report_engine.templates import DEFAULT_TEMPLATE, VALID_TEMPLATES
 
+from .manifest import build_artifact_manifest, write_artifact_manifest
 from .runner import run_pipeline
 from .stages import StageContext
 from .summary import build_pipeline_summary, write_summary
@@ -51,6 +52,14 @@ def cmd_run(args) -> None:
     results = run_pipeline(ctx)
     summary = build_pipeline_summary(ctx, results)
     summary_path = write_summary(summary, ctx.output_root)
+
+    # Manifest is written only on full success — it represents a complete, trusted artifact set.
+    if summary["status"] == "success":
+        manifest = build_artifact_manifest(
+            ctx, results, summary["status"], summary["generated_at"]
+        )
+        manifest_path = write_artifact_manifest(manifest, ctx.output_root)
+        print(f"artifact_manifest.json -> {manifest_path}")
 
     for name, stage_data in summary["stages"].items():
         print(f"  {name}: {stage_data['status']}")

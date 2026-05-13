@@ -35,7 +35,8 @@ def _run_cli(args, input_exists=True):
 
     with patch.object(Path, "exists", return_value=input_exists), \
          patch("analytics_pipeline.cli.run_pipeline", return_value=_all_success()), \
-         patch("analytics_pipeline.cli.write_summary", return_value=Path("/out/pipeline_summary.json")):
+         patch("analytics_pipeline.cli.write_summary", return_value=Path("/out/pipeline_summary.json")), \
+         patch("analytics_pipeline.cli.write_artifact_manifest", return_value=Path("/out/artifact_manifest.json")):
         try:
             with patch("sys.argv", ["analytics-pipeline"] + args):
                 cli.main()
@@ -87,6 +88,7 @@ def test_with_time_flag_passed_to_context(tmp_path):
     with patch.object(Path, "exists", return_value=True), \
          patch("analytics_pipeline.cli.run_pipeline", side_effect=_capture_pipeline), \
          patch("analytics_pipeline.cli.write_summary", return_value=Path("/out/pipeline_summary.json")), \
+         patch("analytics_pipeline.cli.write_artifact_manifest", return_value=Path("/out/artifact_manifest.json")), \
          patch("sys.argv", ["analytics-pipeline", "run", "--input", "x.csv", "--with-time"]):
         try:
             cli.main()
@@ -107,6 +109,7 @@ def test_with_time_defaults_to_false(tmp_path):
     with patch.object(Path, "exists", return_value=True), \
          patch("analytics_pipeline.cli.run_pipeline", side_effect=_capture_pipeline), \
          patch("analytics_pipeline.cli.write_summary", return_value=Path("/out/pipeline_summary.json")), \
+         patch("analytics_pipeline.cli.write_artifact_manifest", return_value=Path("/out/artifact_manifest.json")), \
          patch("sys.argv", ["analytics-pipeline", "run", "--input", "x.csv"]):
         try:
             cli.main()
@@ -130,6 +133,7 @@ def test_template_defaults_to_full_report(tmp_path):
     with patch.object(Path, "exists", return_value=True), \
          patch("analytics_pipeline.cli.run_pipeline", side_effect=_capture_pipeline), \
          patch("analytics_pipeline.cli.write_summary", return_value=Path("/out/pipeline_summary.json")), \
+         patch("analytics_pipeline.cli.write_artifact_manifest", return_value=Path("/out/artifact_manifest.json")), \
          patch("sys.argv", ["analytics-pipeline", "run", "--input", "x.csv"]):
         try:
             cli.main()
@@ -150,6 +154,7 @@ def test_template_executive_summary(tmp_path):
     with patch.object(Path, "exists", return_value=True), \
          patch("analytics_pipeline.cli.run_pipeline", side_effect=_capture_pipeline), \
          patch("analytics_pipeline.cli.write_summary", return_value=Path("/out/pipeline_summary.json")), \
+         patch("analytics_pipeline.cli.write_artifact_manifest", return_value=Path("/out/artifact_manifest.json")), \
          patch("sys.argv", ["analytics-pipeline", "run", "--input", "x.csv",
                             "--template", "executive_summary"]):
         try:
@@ -183,6 +188,7 @@ def test_pipeline_failure_exits_nonzero(tmp_path):
     with patch.object(Path, "exists", return_value=True), \
          patch("analytics_pipeline.cli.run_pipeline", return_value=failed_results), \
          patch("analytics_pipeline.cli.write_summary", return_value=Path("/out/pipeline_summary.json")), \
+         patch("analytics_pipeline.cli.write_artifact_manifest", return_value=Path("/out/artifact_manifest.json")), \
          patch("sys.argv", ["analytics-pipeline", "run", "--input", "x.csv"]):
         try:
             cli.main()
@@ -206,6 +212,7 @@ def test_output_defaults_to_outputs_pipeline():
     with patch.object(Path, "exists", return_value=True), \
          patch("analytics_pipeline.cli.run_pipeline", side_effect=_capture_pipeline), \
          patch("analytics_pipeline.cli.write_summary", return_value=Path("/out/pipeline_summary.json")), \
+         patch("analytics_pipeline.cli.write_artifact_manifest", return_value=Path("/out/artifact_manifest.json")), \
          patch("sys.argv", ["analytics-pipeline", "run", "--input", "x.csv"]):
         try:
             cli.main()
@@ -229,6 +236,7 @@ def test_with_store_defaults_to_false():
     with patch.object(Path, "exists", return_value=True), \
          patch("analytics_pipeline.cli.run_pipeline", side_effect=_capture_pipeline), \
          patch("analytics_pipeline.cli.write_summary", return_value=Path("/out/pipeline_summary.json")), \
+         patch("analytics_pipeline.cli.write_artifact_manifest", return_value=Path("/out/artifact_manifest.json")), \
          patch("sys.argv", ["analytics-pipeline", "run", "--input", "x.csv"]):
         try:
             cli.main()
@@ -249,6 +257,7 @@ def test_with_store_flag_sets_context():
     with patch.object(Path, "exists", return_value=True), \
          patch("analytics_pipeline.cli.run_pipeline", side_effect=_capture_pipeline), \
          patch("analytics_pipeline.cli.write_summary", return_value=Path("/out/pipeline_summary.json")), \
+         patch("analytics_pipeline.cli.write_artifact_manifest", return_value=Path("/out/artifact_manifest.json")), \
          patch("sys.argv", ["analytics-pipeline", "run", "--input", "x.csv", "--with-store"]):
         try:
             cli.main()
@@ -267,6 +276,7 @@ def test_run_exits_zero_with_store_flag():
     with patch.object(Path, "exists", return_value=True), \
          patch("analytics_pipeline.cli.run_pipeline", return_value=all_with_store), \
          patch("analytics_pipeline.cli.write_summary", return_value=Path("/out/pipeline_summary.json")), \
+         patch("analytics_pipeline.cli.write_artifact_manifest", return_value=Path("/out/artifact_manifest.json")), \
          patch("sys.argv", ["analytics-pipeline", "run", "--input", "x.csv", "--with-store"]):
         try:
             cli.main()
@@ -290,6 +300,7 @@ def test_with_visuals_defaults_to_false():
     with patch.object(Path, "exists", return_value=True), \
          patch("analytics_pipeline.cli.run_pipeline", side_effect=_capture_pipeline), \
          patch("analytics_pipeline.cli.write_summary", return_value=Path("/out/pipeline_summary.json")), \
+         patch("analytics_pipeline.cli.write_artifact_manifest", return_value=Path("/out/artifact_manifest.json")), \
          patch("sys.argv", ["analytics-pipeline", "run", "--input", "x.csv"]):
         try:
             cli.main()
@@ -310,6 +321,7 @@ def test_with_visuals_flag_sets_context():
     with patch.object(Path, "exists", return_value=True), \
          patch("analytics_pipeline.cli.run_pipeline", side_effect=_capture_pipeline), \
          patch("analytics_pipeline.cli.write_summary", return_value=Path("/out/pipeline_summary.json")), \
+         patch("analytics_pipeline.cli.write_artifact_manifest", return_value=Path("/out/artifact_manifest.json")), \
          patch("sys.argv", ["analytics-pipeline", "run", "--input", "x.csv", "--with-visuals"]):
         try:
             cli.main()
@@ -330,6 +342,7 @@ def test_with_visuals_implies_with_store():
     with patch.object(Path, "exists", return_value=True), \
          patch("analytics_pipeline.cli.run_pipeline", side_effect=_capture_pipeline), \
          patch("analytics_pipeline.cli.write_summary", return_value=Path("/out/pipeline_summary.json")), \
+         patch("analytics_pipeline.cli.write_artifact_manifest", return_value=Path("/out/artifact_manifest.json")), \
          patch("sys.argv", ["analytics-pipeline", "run", "--input", "x.csv", "--with-visuals"]):
         try:
             cli.main()
@@ -354,6 +367,7 @@ def _capture_ctx(argv):
     with patch.object(Path, "exists", return_value=True), \
          patch("analytics_pipeline.cli.run_pipeline", side_effect=_capture_pipeline), \
          patch("analytics_pipeline.cli.write_summary", return_value=Path("/out/pipeline_summary.json")), \
+         patch("analytics_pipeline.cli.write_artifact_manifest", return_value=Path("/out/artifact_manifest.json")), \
          patch("sys.argv", argv):
         try:
             cli.main()

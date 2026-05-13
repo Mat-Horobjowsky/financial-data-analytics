@@ -438,3 +438,73 @@ def test_summary_report_title_recorded_when_set(tmp_path):
     ctx = _ctx(tmp_path, report_title="Demo AI Infrastructure Co.")
     s = build_pipeline_summary(ctx, _all_success_results())
     assert s["report_title"] == "Demo AI Infrastructure Co."
+
+
+# --- client block in summary ---
+
+
+def test_summary_client_block_none_when_no_context(tmp_path):
+    ctx = _ctx(tmp_path)
+    s = build_pipeline_summary(ctx, _all_success_results())
+    assert s["client"] is None
+
+
+def test_summary_client_block_none_when_context_path_is_none(tmp_path):
+    ctx = StageContext(
+        input_file=tmp_path / "data.csv",
+        output_root=tmp_path / "out",
+        with_time=False,
+        template="full_report",
+        results={},
+        client_context_path=None,
+    )
+    s = build_pipeline_summary(ctx, _all_success_results())
+    assert s["client"] is None
+
+
+def test_summary_client_block_populated_when_context_exists(tmp_path):
+    import csv as _csv
+    cc = tmp_path / "client_context.csv"
+    with cc.open("w", newline="", encoding="utf-8") as f:
+        writer = _csv.DictWriter(f, fieldnames=["client_name", "project_name", "project_id"])
+        writer.writeheader()
+        writer.writerow({
+            "client_name": "Demo AI Infrastructure Co.",
+            "project_name": "Midwest AI Campus Requirement",
+            "project_id": "DEMO-READY-001",
+        })
+    ctx = StageContext(
+        input_file=tmp_path / "data.csv",
+        output_root=tmp_path / "out",
+        with_time=False,
+        template="readiness_summary",
+        results={},
+        client_context_path=cc,
+    )
+    s = build_pipeline_summary(ctx, _all_success_results())
+    assert s["client"] is not None
+    assert s["client"]["client_name"] == "Demo AI Infrastructure Co."
+    assert s["client"]["project_name"] == "Midwest AI Campus Requirement"
+    assert s["client"]["project_id"] == "DEMO-READY-001"
+
+
+def test_summary_client_block_is_dict_when_context_exists(tmp_path):
+    import csv as _csv
+    cc = tmp_path / "cc.csv"
+    with cc.open("w", newline="", encoding="utf-8") as f:
+        writer = _csv.DictWriter(f, fieldnames=["client_name", "project_name", "project_id"])
+        writer.writeheader()
+        writer.writerow({"client_name": "Acme", "project_name": "Project X", "project_id": "P-001"})
+    ctx = StageContext(
+        input_file=tmp_path / "data.csv",
+        output_root=tmp_path / "out",
+        with_time=False,
+        template="full_report",
+        results={},
+        client_context_path=cc,
+    )
+    s = build_pipeline_summary(ctx, _all_success_results())
+    assert isinstance(s["client"], dict)
+    assert "client_name" in s["client"]
+    assert "project_name" in s["client"]
+    assert "project_id" in s["client"]

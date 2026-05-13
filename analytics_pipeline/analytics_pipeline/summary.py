@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from analytics_pipeline import __version__
+from .manifest import parse_client_context
 from .stages import ACTIVE_STAGES, FUTURE_STAGES, StageContext, StageResult
 
 
@@ -47,6 +48,7 @@ def build_pipeline_summary(ctx: StageContext, results: dict[str, StageResult]) -
         else:
             stages_out[name] = {"status": "skipped"}
     future_stages = [s for s in FUTURE_STAGES if s != "store"] if ctx.with_store else FUTURE_STAGES
+    client = parse_client_context(ctx.client_context_path) if ctx.client_context_path else None
     return {
         "pipeline_version": __version__,
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -62,6 +64,7 @@ def build_pipeline_summary(ctx: StageContext, results: dict[str, StageResult]) -
         "metrics_config_path": _resolved_config_path(ctx.metrics_config, "metrics.yaml"),
         "schema_config_path": _resolved_config_path(ctx.schema_config, "schema.yaml"),
         "client_context_path": str(ctx.client_context_path) if ctx.client_context_path else None,
+        "client": client,
         "template": ctx.template,
         "status": overall,
         "stages": stages_out,

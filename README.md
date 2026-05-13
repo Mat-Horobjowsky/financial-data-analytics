@@ -21,7 +21,7 @@ Clean data → Trusted metrics → Visuals anywhere
 | **Report Engine** | v1.4 | Metrics Engine output directory | Markdown + HTML reports, summary JSON, insights JSON; optional PDF via `--pdf` |
 | **Analytics Store** | v0.1 | Metrics Engine output + Report Engine output (optional) | `analytics.duckdb` — 6 tables, 3 views |
 | **Visuals Engine** | v0.1 | `analytics.duckdb` | Self-contained HTML dashboard, `visuals_summary.json` |
-| **Analytics Pipeline** | v0.2 | Raw CSV / XLSX | All engine outputs + `pipeline_summary.json`; optional store, visuals, and Power BI export stages via `--with-store` / `--with-visuals` / `--with-powerbi-export`; named Excel sheet selection via `--sheet`; alternate metric configs via `--metrics-config` / `--schema-config` |
+| **Analytics Pipeline** | v0.2 | Raw CSV / XLSX | All engine outputs + `pipeline_summary.json` + `artifact_manifest.json`; optional store, visuals, and Power BI export stages via `--with-store` / `--with-visuals` / `--with-powerbi-export`; named Excel sheet selection via `--sheet`; alternate metric configs via `--metrics-config` / `--schema-config` |
 
 Each engine is a standalone Python CLI package with tests, documented outputs, and a clearly scoped role in the pipeline.
 
@@ -188,6 +188,7 @@ outputs/demo_readiness/
     validation_summary.csv
     metric_dictionary.csv
   pipeline_summary.json
+  artifact_manifest.json             ← classifies every output as client_facing / bi_facing / internal
 ```
 
 ### Excel workbook path — for client files
@@ -227,7 +228,9 @@ analytics-pipeline run \
   --client-context examples/readiness_demo/client_context.csv
 ```
 
-The `--sheet` flag passes the named Excel sheet directly to the Intake Engine. The `--template readiness_summary --pdf --report-title` flags generate the polished one-page landscape readiness executive PDF at `outputs/demo_readiness_client/report/report.pdf`; `report.html` renders as a polished client-facing readiness page with a dark header, KPI cards, Executive Assessment, and Recommended Next Steps. The `--client-context` flag injects client name, project name, and project ID as an identity line in the Visuals Engine dashboard header, and copies `client_context.csv` into the `powerbi/` output directory alongside the exported metric CSVs.
+The `--sheet` flag passes the named Excel sheet directly to the Intake Engine. The `--template readiness_summary --pdf --report-title` flags generate the polished one-page landscape readiness executive PDF at `outputs/demo_readiness_client/report/report.pdf`; `report.html` renders as a polished client-facing readiness page with a dark header, KPI cards, Executive Assessment, and Recommended Next Steps. The `--client-context` flag injects client name, project name, and project ID as an identity line in the Visuals Engine dashboard header, copies `client_context.csv` into the `powerbi/` output directory, and populates the `client` block in both `pipeline_summary.json` and `artifact_manifest.json`.
+
+After a successful run, `artifact_manifest.json` is written alongside `pipeline_summary.json`. It classifies every generated file as `client_facing`, `bi_facing`, or `internal`, making the deliverable set legible at a glance without parsing the full output tree.
 
 ### Dashboard output
 

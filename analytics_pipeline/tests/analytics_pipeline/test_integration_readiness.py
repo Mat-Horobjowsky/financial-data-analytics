@@ -64,6 +64,8 @@ def test_readiness_full_pipeline(tmp_path):
     input_file = generated_workbook
     out = tmp_path / "pipeline"
 
+    client_context = _DEMO_DIR / "client_context.csv"
+
     pipeline_exe = shutil.which("analytics-pipeline") or "analytics-pipeline"
     result = subprocess.run(
         [
@@ -78,6 +80,7 @@ def test_readiness_full_pipeline(tmp_path):
             "--report-title", "Demo AI Infrastructure Co.",
             "--with-visuals",
             "--with-powerbi-export",
+            "--client-context", str(client_context),
         ],
         capture_output=True,
         text=True,
@@ -92,6 +95,7 @@ def test_readiness_full_pipeline(tmp_path):
 
     expected_files = [
         out / "pipeline_summary.json",
+        out / "artifact_manifest.json",
         out / "report" / "report.pdf",
         out / "store" / "analytics.duckdb",
         out / "visuals" / "readiness_dashboard.html",
@@ -116,3 +120,45 @@ def test_readiness_full_pipeline(tmp_path):
     assert "readiness_schema.yaml" in summary["schema_config_path"]
     for stage in ("intake", "metrics", "report", "store", "visuals", "powerbi_export"):
         assert summary["stages"][stage]["status"] == "success", f"Stage {stage!r} did not succeed"
+    # client block in pipeline_summary
+    assert summary["client"] is not None
+    assert summary["client"]["client_name"] == "Demo AI Infrastructure Co."
+    assert summary["client"]["project_id"] == "DEMO-READY-001"
+
+    # artifact manifest assertions
+    manifest = json.loads((out / "artifact_manifest.json").read_text(encoding="utf-8"))
+    assert manifest["manifest_version"] == "1.0"
+    assert manifest["run"]["status"] == "success"
+
+    # client block in manifest
+    assert manifest["client"] is not None
+    assert manifest["client"]["client_name"] == "Demo AI Infrastructure Co."
+    assert manifest["client"]["project_name"] == "Midwest AI Campus Requirement"
+    assert manifest["client"]["project_id"] == "DEMO-READY-001"
+
+    # audience coverage
+    audiences = {a["audience"] for a in manifest["artifacts"]}
+    assert "client_facing" in audiences
+    assert "bi_facing" in audiences
+    assert "internal" in audiences
+
+    # expected client-facing artifacts
+    client_facing_paths = {a["relative_path"] for a in manifest["artifacts"] if a["audience"] == "client_facing"}
+    assert "report/report.html" in client_facing_paths
+    assert "report/report.pdf" in client_facing_paths
+    assert "visuals/readiness_dashboard.html" in client_facing_paths
+    assert "visuals/readiness_dashboard.pdf" in client_facing_paths
+
+    # expected BI-facing artifacts
+    bi_facing_paths = {a["relative_path"] for a in manifest["artifacts"] if a["audience"] == "bi_facing"}
+    assert "powerbi/readiness_kpis.csv" in bi_facing_paths
+    assert "powerbi/readiness_by_category.csv" in bi_facing_paths
+    assert "powerbi/client_context.csv" in bi_facing_paths
+
+    # all generated stage files are represented
+    total_stage_files = sum(
+        len(summary["stages"][s]["generated_files"])
+        for s in summary["stages"]
+        if summary["stages"][s]["status"] == "success"
+    )
+    assert len(manifest["artifacts"]) == total_stage_files

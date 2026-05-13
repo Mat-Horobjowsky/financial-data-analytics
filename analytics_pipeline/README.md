@@ -125,14 +125,15 @@ Produces `outputs/demo_readiness_client/report/report.pdf` (polished one-page la
 │   ├── validation_summary.csv
 │   ├── metric_dictionary.csv
 │   └── client_context.csv          # optional — copied when --client-context is provided
-└── pipeline_summary.json
+├── pipeline_summary.json
+└── artifact_manifest.json          # only created on full success; requires no extra flags
 ```
 
 The CSV schema for the `powerbi/` output is a stable downstream contract. Column names, file names, grain, and data types must not change without updating `docs/powerbi_export_contract.md` and the contract validation tests in `tests/analytics_pipeline/test_powerbi_export_contract.py`.
 
 ### pipeline_summary.json
 
-`pipeline_summary.json` records all inputs and resolved config paths so any run can be audited or replayed exactly.
+`pipeline_summary.json` records all inputs and resolved config paths so any run can be audited or replayed exactly. When `--client-context` is provided, a `client` block with `client_name`, `project_name`, and `project_id` is included.
 
 ```json
 {
@@ -149,6 +150,12 @@ The CSV schema for the `powerbi/` output is a stable downstream contract. Column
   "report_title": "Demo AI Infrastructure Co.",
   "metrics_config_path": "/abs/path/to/metrics_engine/config/readiness_metrics.yaml",
   "schema_config_path": "/abs/path/to/metrics_engine/config/readiness_schema.yaml",
+  "client_context_path": "examples/readiness_demo/client_context.csv",
+  "client": {
+    "client_name": "Demo AI Infrastructure Co.",
+    "project_name": "Midwest AI Campus Requirement",
+    "project_id": "DEMO-READY-001"
+  },
   "template": "readiness_summary",
   "status": "success",
   "stages": {
@@ -164,6 +171,51 @@ The CSV schema for the `powerbi/` output is a stable downstream contract. Column
 ```
 
 `metrics_config_path` and `schema_config_path` are always absolute paths — either the resolved custom path or the engine's built-in default.
+
+### artifact_manifest.json
+
+`artifact_manifest.json` is written alongside `pipeline_summary.json` after every successful full pipeline run. It classifies every generated file into three audiences — `client_facing`, `bi_facing`, and `internal` — so a reviewer, automation step, or future packaging workflow can identify deliverables without parsing the full output tree.
+
+```json
+{
+  "manifest_version": "1.0",
+  "generated_at": "...",
+  "pipeline_version": "0.2.0",
+  "client": {
+    "client_name": "Demo AI Infrastructure Co.",
+    "project_name": "Midwest AI Campus Requirement",
+    "project_id": "DEMO-READY-001"
+  },
+  "run": {
+    "status": "success",
+    "input_file": "...",
+    "template": "readiness_summary",
+    "output_dir": "outputs/demo_readiness_client"
+  },
+  "artifacts": [
+    {
+      "name": "Executive Report (HTML)",
+      "category": "report",
+      "audience": "client_facing",
+      "relative_path": "report/report.html",
+      "description": "Client-facing executive summary report (HTML)",
+      "source_stage": "report",
+      "generated_at": "..."
+    },
+    ...
+  ]
+}
+```
+
+Artifact audiences:
+
+| Audience | Files |
+|---|---|
+| `client_facing` | `report/report.html`, `report/report.pdf`, `visuals/readiness_dashboard.html`, `visuals/readiness_dashboard.pdf` |
+| `bi_facing` | all files under `powerbi/` |
+| `internal` | all other files — intake outputs, metrics tables, analytics store, metadata JSONs |
+
+Unrecognised files (category `unknown`) are included with audience `internal` rather than silently omitted. The `client` block is populated from `--client-context` when provided; it is `null` when no context is passed.
 
 ## Prerequisites
 
