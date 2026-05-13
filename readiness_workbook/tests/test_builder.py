@@ -453,10 +453,10 @@ class TestWriteClientContext:
         import csv as _csv
 
         out = tmp_path / "client_context.csv"
-        write_client_context(_make_client_dict(client_name="NovaTech"), out)
+        write_client_context(_make_client_dict(client_name="Test Client"), out)
         with open(out, newline="", encoding="utf-8") as f:
             row = list(_csv.DictReader(f))[0]
-        assert row["client_name"] == "NovaTech"
+        assert row["client_name"] == "Test Client"
 
     def test_assessment_date_formatted_as_iso(self, tmp_path):
         import csv as _csv

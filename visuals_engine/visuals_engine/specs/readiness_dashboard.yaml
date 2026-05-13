@@ -1,6 +1,6 @@
 dashboard:
-  title: "NovaTech Systems — RFP Readiness Dashboard"
-  subtitle: "Transaction-readiness snapshot for NVT-2025-NAM based on 24 scoped requirements across capacity, timeline, technical, market, power, commercial, capital, and decision readiness."
+  title: "Transaction Readiness Dashboard"
+  subtitle: "Requirement-level readiness snapshot across capacity, timeline, technical, market, power, commercial, capital, and decision dimensions."
   description: "Readiness metrics from Metrics Engine + Analytics Store"
   store_tables:
     metrics: long_metrics
