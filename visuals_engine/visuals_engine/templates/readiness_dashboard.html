@@ -194,11 +194,6 @@ body {
   font-weight: 500;
   color: #cbd5e0;
 }
-.footer__validation {
-  margin-top: 4px;
-  font-size: 0.78rem;
-  color: #a0aec0;
-}
 .footer__generated {
   margin-top: 4px;
   font-size: 0.75rem;
@@ -307,11 +302,6 @@ body {
 <footer class="footer">
   <div class="container">
     <p class="footer__source">Generated from Metrics Engine outputs stored in Analytics Store and rendered by Visuals Engine.</p>
-    {% if validation_errors is not none %}
-    <p class="footer__validation">
-      Validation: {{ validation_errors }} error{% if validation_errors != 1 %}s{% endif %}, {{ validation_warnings }} informational warning{% if validation_warnings != 1 %}s{% endif %}
-    </p>
-    {% endif %}
     <p class="footer__generated">Generated {{ generated_at }}</p>
   </div>
 </footer>

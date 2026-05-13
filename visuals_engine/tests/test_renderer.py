@@ -189,14 +189,14 @@ def test_html_footer_no_raw_validation_status(sample_spec, sample_data):
     assert "passed_with_warnings" not in html
 
 
-def test_html_footer_shows_error_count(sample_spec, sample_data):
+def test_html_footer_omits_error_count(sample_spec, sample_data):
     html = render_html(TEMPLATE_PATH, sample_spec, sample_data)
-    assert "0 errors" in html
+    assert "0 errors" not in html
 
 
-def test_html_footer_shows_informational_warnings(sample_spec, sample_data):
+def test_html_footer_omits_validation_warnings(sample_spec, sample_data):
     html = render_html(TEMPLATE_PATH, sample_spec, sample_data)
-    assert "5 informational warnings" in html
+    assert "informational warnings" not in html
 
 
 def test_html_footer_source_note(sample_spec, sample_data):
