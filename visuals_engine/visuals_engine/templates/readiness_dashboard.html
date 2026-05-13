@@ -38,6 +38,13 @@ body {
   line-height: 1.55;
   max-width: 720px;
 }
+.header__client {
+  margin-top: 6px;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: #e2e8f0;
+}
+
 .header__meta {
   margin-top: 10px;
   font-size: 0.78rem;
@@ -211,6 +218,9 @@ body {
 <header class="header">
   <div class="container">
     <h1 class="header__title">{{ title }}</h1>
+    {% if client_identity %}
+    <p class="header__client">{{ client_identity }}</p>
+    {% endif %}
     {% if subtitle %}
     <p class="header__subtitle">{{ subtitle }}</p>
     {% endif %}

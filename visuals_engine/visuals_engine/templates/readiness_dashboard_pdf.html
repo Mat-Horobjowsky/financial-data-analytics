@@ -98,7 +98,8 @@ body {
 <table style="width: 100%; border-collapse: collapse; margin-bottom: 5pt;" cellspacing="0" cellpadding="0">
   <tr>
     <td style="background-color: #1a202c; padding: 7pt 8pt 7pt 12pt;">
-      <p style="font-size: 14pt; font-weight: bold; color: #f7fafc; margin: 0 0 3pt 0; line-height: 1.1;">{{ title }}</p>
+      <p style="font-size: 14pt; font-weight: bold; color: #f7fafc; margin: 0 0 2pt 0; line-height: 1.1;">{{ title }}</p>
+      {% if client_identity %}<p style="font-size: 9pt; font-weight: 500; color: #e2e8f0; margin: 0 0 2pt 0;">{{ client_identity }}</p>{% endif %}
       {% if subtitle %}<p style="font-size: 8pt; color: #a0aec0; margin: 0;">{{ subtitle }}</p>{% endif %}
     </td>
     {% if as_of_date %}

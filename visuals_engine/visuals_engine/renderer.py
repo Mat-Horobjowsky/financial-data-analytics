@@ -87,7 +87,7 @@ def _pivot_breakdown(
     return result
 
 
-def build_template_context(spec: dict, data: dict) -> dict:
+def build_template_context(spec: dict, data: dict, client_identity: str = "") -> dict:
     dashboard_conf = spec["dashboard"]
     kpi_labels = dashboard_conf.get("kpi_labels", {})
     kpi_descriptions = dashboard_conf.get("kpi_descriptions", {})
@@ -111,6 +111,7 @@ def build_template_context(spec: dict, data: dict) -> dict:
     return {
         "title": dashboard_conf["title"],
         "subtitle": dashboard_conf.get("subtitle", ""),
+        "client_identity": client_identity,
         "as_of_date": data.get("as_of_date", ""),
         "kpi_cards": kpi_cards,
         "category_rows": category_rows,
@@ -124,10 +125,10 @@ def build_template_context(spec: dict, data: dict) -> dict:
     }
 
 
-def render_html(template_path: Path, spec: dict, data: dict) -> str:
+def render_html(template_path: Path, spec: dict, data: dict, client_identity: str = "") -> str:
     from jinja2 import Environment, FileSystemLoader
 
-    context = build_template_context(spec, data)
+    context = build_template_context(spec, data, client_identity=client_identity)
     env = Environment(
         loader=FileSystemLoader(str(template_path.parent)),
         autoescape=True,
@@ -136,9 +137,9 @@ def render_html(template_path: Path, spec: dict, data: dict) -> str:
     return template.render(**context)
 
 
-def render_pdf_html(spec: dict, data: dict) -> str:
+def render_pdf_html(spec: dict, data: dict, client_identity: str = "") -> str:
     template_path = Path(__file__).parent / "templates" / "readiness_dashboard_pdf.html"
-    return render_html(template_path, spec, data)
+    return render_html(template_path, spec, data, client_identity=client_identity)
 
 
 def render_summary(

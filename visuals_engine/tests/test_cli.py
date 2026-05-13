@@ -116,15 +116,15 @@ def test_cli_export_powerbi_prints_file_paths(sample_store, tmp_path):
 # --- export-powerbi --client-context ---
 
 
-def _make_client_context_csv(path) -> str:
+def _make_client_context_csv(path, *, client_name="CLI Corp", project_name="", project_id="CLI-001") -> str:
     import csv
     from pathlib import Path as _P
     p = _P(path)
     p.parent.mkdir(parents=True, exist_ok=True)
     with open(p, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=["project_id", "client_name"])
+        writer = csv.DictWriter(f, fieldnames=["project_id", "client_name", "project_name"])
         writer.writeheader()
-        writer.writerow({"project_id": "CLI-001", "client_name": "CLI Corp"})
+        writer.writerow({"project_id": project_id, "client_name": client_name, "project_name": project_name})
     return str(p)
 
 
@@ -159,6 +159,63 @@ def test_cli_export_powerbi_without_client_context_still_passes(sample_store, tm
     result = _run(["export-powerbi", "--store", sample_store, "--output", str(tmp_path / "powerbi")])
     assert result.returncode == 0
     assert not (tmp_path / "powerbi" / "client_context.csv").exists()
+
+
+# --- build: --client-context ---
+
+
+def test_cli_build_with_client_context_exits_zero(sample_store, tmp_path):
+    ctx = _make_client_context_csv(
+        tmp_path / "client_context.csv",
+        client_name="Acme Corp",
+        project_name="Midwest Campus",
+        project_id="P-001",
+    )
+    result = _run([
+        "build", "--store", sample_store,
+        "--spec", SPEC_PATH,
+        "--output", str(tmp_path / "out"),
+        "--client-context", ctx,
+    ])
+    assert result.returncode == 0, result.stderr
+
+
+def test_cli_build_with_client_context_html_contains_client_name(sample_store, tmp_path):
+    ctx = _make_client_context_csv(
+        tmp_path / "client_context.csv",
+        client_name="Acme Corp",
+        project_name="Midwest Campus",
+        project_id="P-001",
+    )
+    out = tmp_path / "out"
+    _run([
+        "build", "--store", sample_store,
+        "--spec", SPEC_PATH,
+        "--output", str(out),
+        "--client-context", ctx,
+    ])
+    html = (out / "readiness_dashboard.html").read_text()
+    assert "Acme Corp" in html
+    assert "Midwest Campus" in html
+    assert "P-001" in html
+
+
+def test_cli_build_without_client_context_omits_identity(sample_store, tmp_path):
+    out = tmp_path / "out"
+    _run(["build", "--store", sample_store, "--spec", SPEC_PATH, "--output", str(out)])
+    html = (out / "readiness_dashboard.html").read_text()
+    assert '<p class="header__client">' not in html
+
+
+def test_cli_build_missing_client_context_file_exits_nonzero(sample_store, tmp_path):
+    result = _run([
+        "build", "--store", sample_store,
+        "--spec", SPEC_PATH,
+        "--output", str(tmp_path / "out"),
+        "--client-context", str(tmp_path / "no_such.csv"),
+    ])
+    assert result.returncode == 1
+    assert "error" in result.stderr.lower()
 
 
 # --- build: PDF artifact ---

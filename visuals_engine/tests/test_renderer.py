@@ -294,3 +294,48 @@ def test_pdf_html_contains_subtitle_when_configured(sample_spec, sample_data):
     from visuals_engine.renderer import render_pdf_html
     html = render_pdf_html(sample_spec, sample_data)
     assert "Client PDF snapshot." in html
+
+
+# --- Client identity injection ---
+
+
+def test_context_includes_client_identity_field(sample_spec, sample_data):
+    ctx = build_template_context(sample_spec, sample_data)
+    assert "client_identity" in ctx
+
+
+def test_context_client_identity_defaults_to_empty_string(sample_spec, sample_data):
+    ctx = build_template_context(sample_spec, sample_data)
+    assert ctx["client_identity"] == ""
+
+
+def test_context_client_identity_set_when_provided(sample_spec, sample_data):
+    ctx = build_template_context(sample_spec, sample_data, client_identity="Acme Corp · Project X · P-001")
+    assert ctx["client_identity"] == "Acme Corp · Project X · P-001"
+
+
+def test_html_renders_client_identity_line(sample_spec, sample_data):
+    html = render_html(TEMPLATE_PATH, sample_spec, sample_data, client_identity="Acme Corp · Project X · P-001")
+    assert "Acme Corp · Project X · P-001" in html
+
+
+def test_html_renders_client_identity_in_header_element(sample_spec, sample_data):
+    html = render_html(TEMPLATE_PATH, sample_spec, sample_data, client_identity="Acme Corp · Project X · P-001")
+    assert 'class="header__client"' in html
+
+
+def test_html_omits_client_identity_when_empty(sample_spec, sample_data):
+    html = render_html(TEMPLATE_PATH, sample_spec, sample_data)
+    assert '<p class="header__client">' not in html
+
+
+def test_pdf_html_renders_client_identity(sample_spec, sample_data):
+    from visuals_engine.renderer import render_pdf_html
+    html = render_pdf_html(sample_spec, sample_data, client_identity="Acme Corp · Project X · P-001")
+    assert "Acme Corp · Project X · P-001" in html
+
+
+def test_pdf_html_omits_client_identity_when_empty(sample_spec, sample_data):
+    from visuals_engine.renderer import render_pdf_html
+    html = render_pdf_html(sample_spec, sample_data)
+    assert "Acme Corp" not in html

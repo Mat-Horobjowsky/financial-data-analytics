@@ -17,6 +17,15 @@ def main() -> None:
     build.add_argument("--store", required=True, help="Path to analytics.duckdb")
     build.add_argument("--spec", required=True, help="Path to dashboard spec YAML")
     build.add_argument("--output", required=True, help="Output directory path")
+    build.add_argument(
+        "--client-context",
+        dest="client_context",
+        default=None,
+        help=(
+            "Optional path to client_context.csv; injects client_name, project_name, "
+            "and project_id into the dashboard header."
+        ),
+    )
 
     export_pbi = subparsers.add_parser(
         "export-powerbi",
@@ -34,12 +43,33 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.command == "build":
-        _run_build(args.store, args.spec, args.output)
+        client_context = getattr(args, "client_context", None)
+        if client_context is not None and not Path(client_context).exists():
+            print(f"Error: client_context file not found: {client_context}", file=sys.stderr)
+            sys.exit(1)
+        _run_build(args.store, args.spec, args.output, client_context)
     elif args.command == "export-powerbi":
         _run_export_powerbi(args.store, args.output, getattr(args, "client_context", None))
 
 
-def _run_build(store_path: str, spec_path: str, output_dir: str) -> None:
+def _parse_client_identity(csv_path: str) -> str:
+    import csv
+    try:
+        with open(csv_path, encoding="utf-8", newline="") as f:
+            row = next(csv.DictReader(f), None)
+        if row is None:
+            return ""
+        parts = [
+            row.get("client_name", "").strip(),
+            row.get("project_name", "").strip(),
+            row.get("project_id", "").strip(),
+        ]
+        return " · ".join(p for p in parts if p)
+    except Exception:
+        return ""
+
+
+def _run_build(store_path: str, spec_path: str, output_dir: str, client_context: str | None = None) -> None:
     import yaml
     from . import loader, renderer
     from . import pdf as _pdf
@@ -63,11 +93,13 @@ def _run_build(store_path: str, spec_path: str, output_dir: str) -> None:
     finally:
         con.close()
 
+    client_identity = _parse_client_identity(client_context) if client_context else ""
+
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
     template_path = Path(__file__).parent / "templates" / "readiness_dashboard.html"
-    html_content = renderer.render_html(template_path, spec, data)
+    html_content = renderer.render_html(template_path, spec, data, client_identity=client_identity)
     summary = renderer.render_summary(spec, data, store_path, spec_path)
 
     html_file = output_path / "readiness_dashboard.html"
@@ -76,7 +108,7 @@ def _run_build(store_path: str, spec_path: str, output_dir: str) -> None:
 
     pdf_file = output_path / "readiness_dashboard.pdf"
     try:
-        pdf_html = renderer.render_pdf_html(spec, data)
+        pdf_html = renderer.render_pdf_html(spec, data, client_identity=client_identity)
         _pdf.render_pdf(pdf_html, pdf_file)
         summary["pdf_artifact"] = str(pdf_file)
         summary["pdf_status"] = "generated"

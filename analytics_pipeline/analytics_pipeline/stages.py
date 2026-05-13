@@ -34,6 +34,8 @@ class StageContext:
     schema_config: Path | None = None
     sheet: str | None = None
     client_context_path: Path | None = None
+    with_pdf: bool = False
+    report_title: str | None = None
 
 
 def build_intake_cmd(ctx: StageContext) -> list[str]:
@@ -93,7 +95,7 @@ def build_metrics_cmd(ctx: StageContext) -> list[str]:
 
 
 def build_report_cmd(ctx: StageContext) -> list[str]:
-    return [
+    cmd = [
         sys.executable,
         "-m",
         "report_engine.cli",
@@ -105,6 +107,11 @@ def build_report_cmd(ctx: StageContext) -> list[str]:
         "--template",
         ctx.template,
     ]
+    if ctx.with_pdf:
+        cmd.append("--pdf")
+    if ctx.report_title is not None:
+        cmd.extend(["--title", ctx.report_title])
+    return cmd
 
 
 def build_store_cmd(ctx: StageContext) -> list[str]:
@@ -141,7 +148,7 @@ def build_visuals_cmd(ctx: StageContext) -> list[str]:
     import visuals_engine as _ve
 
     spec_path = Path(_ve.__file__).parent / "specs" / "readiness_dashboard.yaml"
-    return [
+    cmd = [
         sys.executable,
         "-m",
         "visuals_engine.cli",
@@ -153,6 +160,9 @@ def build_visuals_cmd(ctx: StageContext) -> list[str]:
         "--output",
         str(ctx.output_root / "visuals"),
     ]
+    if ctx.client_context_path is not None:
+        cmd.extend(["--client-context", str(ctx.client_context_path)])
+    return cmd
 
 
 ACTIVE_STAGES: list[tuple[str, Callable]] = [
