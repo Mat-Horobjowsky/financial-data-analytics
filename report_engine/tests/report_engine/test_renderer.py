@@ -822,12 +822,12 @@ def test_render_readiness_pdf_html_has_dark_header(readiness_pdf_data):
 
 
 def test_render_readiness_pdf_html_uses_provided_title(readiness_pdf_data):
-    html = render_readiness_pdf_html(readiness_pdf_data, title="NovaTech Systems")
-    assert "NovaTech Systems" in html
+    html = render_readiness_pdf_html(readiness_pdf_data, title="Demo AI Infrastructure Co.")
+    assert "Demo AI Infrastructure Co." in html
 
 
 def test_render_readiness_pdf_html_has_rfp_readiness_suffix(readiness_pdf_data):
-    html = render_readiness_pdf_html(readiness_pdf_data, title="NovaTech Systems")
+    html = render_readiness_pdf_html(readiness_pdf_data, title="Demo AI Infrastructure Co.")
     assert "RFP Readiness Summary" in html
 
 
@@ -1194,3 +1194,141 @@ def test_readiness_pdf_critical_total_count_always_shown(readiness_pdf_mixed_dat
     crit_block = html[crit_start:seg_start]
     # The overall total (2) must still be shown
     assert "Total: 2" in crit_block
+
+
+# ── render_readiness_html tests ───────────────────────────────────────────────
+
+from report_engine.html import render_readiness_html
+
+
+def test_render_readiness_html_returns_string(readiness_pdf_data):
+    result = render_readiness_html(readiness_pdf_data, title="Test Client")
+    assert isinstance(result, str)
+
+
+def test_render_readiness_html_is_valid_html_document(readiness_pdf_data):
+    html = render_readiness_html(readiness_pdf_data, title="Test Client")
+    assert "<!DOCTYPE html>" in html
+    assert "<html" in html
+    assert "</html>" in html
+
+
+def test_render_readiness_html_has_dark_header(readiness_pdf_data):
+    html = render_readiness_html(readiness_pdf_data, title="Test Client")
+    assert "#1a202c" in html
+
+
+def test_render_readiness_html_uses_provided_title(readiness_pdf_data):
+    html = render_readiness_html(readiness_pdf_data, title="Demo AI Infrastructure Co.")
+    assert "Demo AI Infrastructure Co." in html
+
+
+def test_render_readiness_html_has_rfp_readiness_suffix(readiness_pdf_data):
+    html = render_readiness_html(readiness_pdf_data, title="Demo AI Infrastructure Co.")
+    assert "RFP Readiness Summary" in html
+
+
+def test_render_readiness_html_derives_title_from_folder(readiness_pdf_data):
+    html = render_readiness_html(readiness_pdf_data)
+    assert "Test Metrics" in html
+
+
+def test_render_readiness_html_has_kpi_card_markup(readiness_pdf_data):
+    html = render_readiness_html(readiness_pdf_data, title="Test Client")
+    assert "rh-kpi-card" in html
+
+
+def test_render_readiness_html_has_kpi_completion_value(readiness_pdf_data):
+    html = render_readiness_html(readiness_pdf_data, title="Test Client")
+    assert "50%" in html
+
+
+def test_render_readiness_html_has_executive_assessment(readiness_pdf_data):
+    html = render_readiness_html(readiness_pdf_data, title="Test Client")
+    assert "Executive Assessment" in html
+
+
+def test_render_readiness_html_has_next_steps(readiness_pdf_data):
+    html = render_readiness_html(readiness_pdf_data, title="Test Client")
+    assert "Recommended Next Steps" in html
+
+
+def test_render_readiness_html_has_open_gaps_section(readiness_pdf_data):
+    html = render_readiness_html(readiness_pdf_data, title="Test Client")
+    assert "Open Gaps" in html
+
+
+def test_render_readiness_html_has_critical_items_section(readiness_pdf_data):
+    html = render_readiness_html(readiness_pdf_data, title="Test Client")
+    assert "Critical Items" in html
+
+
+def test_render_readiness_html_has_readiness_by_category(readiness_pdf_data):
+    html = render_readiness_html(readiness_pdf_data, title="Test Client")
+    assert "Readiness by Category" in html
+
+
+def test_render_readiness_html_formats_segment_labels(readiness_pdf_data):
+    html = render_readiness_html(readiness_pdf_data, title="Test Client")
+    assert "Site Control" in html
+    assert "site_control" not in html
+
+
+def test_render_readiness_html_omits_validation_block(readiness_pdf_data):
+    html = render_readiness_html(readiness_pdf_data, title="Test Client")
+    assert "passed_with_warnings" not in html
+    assert "Some internal warning about schema" not in html
+
+
+def test_render_readiness_html_omits_metric_dictionary(readiness_pdf_data):
+    html = render_readiness_html(readiness_pdf_data, title="Test Client")
+    assert "Metric Dictionary" not in html
+
+
+def test_render_readiness_html_assessment_before_next_steps(readiness_pdf_data):
+    html = render_readiness_html(readiness_pdf_data, title="Test Client")
+    pos_assess = html.index("Executive Assessment")
+    pos_steps = html.index("Recommended Next Steps")
+    assert pos_assess < pos_steps
+
+
+def test_render_readiness_html_next_steps_before_gaps(readiness_pdf_data):
+    html = render_readiness_html(readiness_pdf_data, title="Test Client")
+    pos_steps = html.index("Recommended Next Steps")
+    pos_gaps = html.index('rh-sec-title">Open Gaps')
+    assert pos_steps < pos_gaps
+
+
+def test_render_readiness_html_report_date_in_footer(readiness_pdf_data):
+    html = render_readiness_html(readiness_pdf_data, title="Test Client", report_date=date(2025, 6, 1))
+    assert "Generated 2025-06-01" in html
+
+
+def test_render_readiness_html_as_of_date_from_data(readiness_pdf_data):
+    html = render_readiness_html(readiness_pdf_data, title="Test Client")
+    assert "As of 2025-01-15" in html
+
+
+def test_render_readiness_html_gaps_total_shown(readiness_pdf_mixed_data):
+    html = render_readiness_html(readiness_pdf_mixed_data, title="Test Client")
+    gaps_start = html.index('rh-sec-title">Open Gaps')
+    crit_start = html.index('rh-sec-title">Critical Items')
+    gaps_block = html[gaps_start:crit_start]
+    assert "Total: 5" in gaps_block
+
+
+def test_render_readiness_html_gaps_omits_zero_count_category(readiness_pdf_mixed_data):
+    html = render_readiness_html(readiness_pdf_mixed_data, title="Test Client")
+    gaps_start = html.index("Open Gaps")
+    crit_start = html.index("Critical Items")
+    gaps_block = html[gaps_start:crit_start]
+    assert "Beta" not in gaps_block
+
+
+def test_render_readiness_html_segment_table_includes_all_categories(readiness_pdf_mixed_data):
+    html = render_readiness_html(readiness_pdf_mixed_data, title="Test Client")
+    seg_start = html.index("Readiness by Category")
+    seg_block = html[seg_start:]
+    assert "Alpha" in seg_block
+    assert "Beta" in seg_block
+    assert "Gamma" in seg_block

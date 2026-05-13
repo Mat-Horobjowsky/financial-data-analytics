@@ -633,6 +633,343 @@ def _readiness_pdf_segment_tables_html(data: ReportData) -> str:
     return "\n".join(parts)
 
 
+_READINESS_HTML_STYLE = (
+    "*, *::before, *::after{box-sizing:border-box;margin:0;padding:0}"
+    "body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;"
+    "background:#f0f2f5;color:#1a202c;line-height:1.5}"
+    ".rh-hdr{background:#1a202c;padding:32px 0 28px}"
+    ".rh-container{max-width:960px;margin:0 auto;padding:0 24px}"
+    ".rh-hdr-title{font-size:1.6rem;font-weight:700;color:#f7fafc;letter-spacing:-0.3px}"
+    ".rh-hdr-asof{margin-top:6px;font-size:0.8rem;color:#718096}"
+    ".rh-main{padding:32px 0 48px}"
+    ".rh-sec-title{font-size:0.85rem;font-weight:700;color:#2d3748;text-transform:uppercase;"
+    "letter-spacing:0.7px;border-bottom:2px solid #e2e8f0;padding-bottom:8px;margin:28px 0 14px}"
+    ".rh-kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(195px,1fr));gap:14px;margin-bottom:4px}"
+    ".rh-kpi-card{background:#fff;border-radius:10px;padding:22px 20px 18px;"
+    "box-shadow:0 1px 3px rgba(0,0,0,0.08);border-top:4px solid #e2e8f0}"
+    ".rh-kpi-card--primary{border-top-color:#3182ce;"
+    "background:linear-gradient(150deg,#fff 0%,#ebf8ff 100%)}"
+    ".rh-kpi-val{font-size:2.2rem;font-weight:700;color:#1a202c;line-height:1;letter-spacing:-1px}"
+    ".rh-kpi-card--primary .rh-kpi-val{color:#2b6cb0}"
+    ".rh-kpi-lbl{margin-top:8px;font-size:0.75rem;font-weight:600;color:#718096;"
+    "text-transform:uppercase;letter-spacing:0.6px}"
+    ".rh-assess{background:#ebf8ff;border:1px solid #bee3f8;border-top:3px solid #3182ce;"
+    "border-radius:8px;padding:18px 20px;margin-bottom:4px}"
+    ".rh-assess-posture{font-size:1.1rem;font-weight:700;margin:0 0 8px}"
+    ".rh-assess-body{font-size:0.92rem;color:#2d3748;line-height:1.55}"
+    ".rh-assess-txn{margin-top:6px;font-size:0.82rem;color:#4a5568}"
+    ".rh-steps{margin:4px 0 0 20px;padding:0}"
+    ".rh-steps li{font-size:0.9rem;color:#1a202c;margin-bottom:6px;line-height:1.4}"
+    ".rh-s-crit{color:#c53030;font-weight:600}"
+    ".rh-s-high{color:#2b6cb0}"
+    ".rh-total{font-size:1rem;font-weight:700;color:#1a202c;margin:0 0 12px}"
+    ".rh-total--alert{color:#c53030}"
+    ".rh-table{border-collapse:collapse;width:100%;background:#fff;border-radius:8px;"
+    "overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.07);margin-bottom:4px}"
+    ".rh-th{background:#f7fafc;font-size:0.75rem;font-weight:700;color:#a0aec0;"
+    "text-transform:uppercase;letter-spacing:0.5px;padding:10px 14px;"
+    "text-align:left;border-bottom:1px solid #e2e8f0}"
+    ".rh-td{padding:10px 14px;font-size:0.9rem;border-bottom:1px solid #f0f4f8;vertical-align:middle}"
+    ".rh-tr:last-child .rh-td{border-bottom:none}"
+    ".rh-footer{background:#2d3748;padding:24px 0;margin-top:40px}"
+    ".rh-footer p{font-size:0.78rem;color:#a0aec0;margin:0}"
+)
+
+
+def _rh_kpi_cards(data: ReportData) -> str:
+    _ORDER = [
+        "readiness_completion_pct",
+        "open_gap_count",
+        "critical_item_count",
+        "total_requirement_count",
+    ]
+    _LABELS = {
+        "readiness_completion_pct": "Readiness Completion",
+        "open_gap_count": "Open Gaps",
+        "critical_item_count": "Critical Items",
+        "total_requirement_count": "Requirements",
+    }
+    rows = readiness_snapshot_rows(data)
+    by_id = {r["metric_id"]: r for r in rows}
+    cards = ""
+    for mid in _ORDER:
+        if mid not in by_id:
+            continue
+        row = by_id[mid]
+        formatted = format_metric_value(row["value"], row["unit"])
+        label = _LABELS.get(mid, row["label"])
+        is_primary = mid == "readiness_completion_pct"
+        cls = "rh-kpi-card rh-kpi-card--primary" if is_primary else "rh-kpi-card"
+        cards += (
+            f'<div class="{cls}">'
+            f'<div class="rh-kpi-val">{escape(formatted)}</div>'
+            f'<div class="rh-kpi-lbl">{escape(label)}</div>'
+            f"</div>"
+        )
+    if not cards:
+        return ""
+    return (
+        '<p class="rh-sec-title">Key Metrics</p>'
+        f'<div class="rh-kpi-grid">{cards}</div>'
+    )
+
+
+def _rh_assessment(data: ReportData) -> str:
+    a = build_readiness_assessment(data)
+    if not a["summary"]:
+        return ""
+    posture = a["posture"]
+    posture_color = "#c53030" if posture in ("Not RFP-Ready", "At Risk") else "#2b6cb0"
+    body_parts = [a["summary"]]
+    if a.get("weakness_note"):
+        body_parts.append(a["weakness_note"])
+    body_text = " ".join(body_parts)
+    return (
+        '<p class="rh-sec-title">Executive Assessment</p>'
+        '<div class="rh-assess">'
+        f'<p class="rh-assess-posture" style="color:{posture_color};">'
+        f"Current Posture: {escape(posture)}</p>"
+        f'<p class="rh-assess-body">{escape(body_text)}</p>'
+        f'<p class="rh-assess-txn">Transaction posture: {escape(a["transaction_posture"])}</p>'
+        "</div>"
+    )
+
+
+def _rh_next_steps(data: ReportData) -> str:
+    recs = build_readiness_recommendations(data)
+    if not recs:
+        return ""
+    items = ""
+    for r in recs:
+        sev = r.get("severity", "")
+        cls = ' class="rh-s-crit"' if sev == "critical" else (
+            ' class="rh-s-high"' if sev == "high" else ""
+        )
+        items += f"<li{cls}>{escape(r['recommendation'])}</li>"
+    return (
+        '<p class="rh-sec-title">Recommended Next Steps</p>'
+        f'<ol class="rh-steps">{items}</ol>'
+    )
+
+
+def _rh_gaps(data: ReportData) -> str:
+    all_snap = {r["metric_id"]: r for r in snapshot_rows(data)}
+    gap_row = all_snap.get("open_gap_count")
+    if gap_row is None:
+        return ""
+    try:
+        count_str = str(int(float(gap_row["value"])))
+    except (ValueError, TypeError):
+        count_str = str(gap_row["value"])
+    seg_data = readiness_segment_data(data, "date_category", "category")
+    rows_html = ""
+    if seg_data and any(r.get("open_gap_count") is not None for r in seg_data):
+        for r in seg_data:
+            val = r.get("open_gap_count")
+            if val is None:
+                continue
+            try:
+                count = int(float(val))
+            except (ValueError, TypeError):
+                continue
+            if count == 0:
+                continue
+            rows_html += (
+                f'<tr class="rh-tr">'
+                f'<td class="rh-td">{escape(_fmt_seg(r["segment"]))}</td>'
+                f'<td class="rh-td" style="text-align:center;">{escape(str(count))}</td>'
+                f"</tr>"
+            )
+    table = ""
+    if rows_html:
+        table = (
+            '<table class="rh-table"><thead><tr>'
+            '<th class="rh-th">Category</th>'
+            '<th class="rh-th" style="text-align:center;">Gaps</th>'
+            f"</tr></thead><tbody>{rows_html}</tbody></table>"
+        )
+    return (
+        '<p class="rh-sec-title">Open Gaps</p>'
+        f'<p class="rh-total">Total: {escape(count_str)}</p>'
+        f"{table}"
+    )
+
+
+def _rh_critical(data: ReportData) -> str:
+    all_snap = {r["metric_id"]: r for r in snapshot_rows(data)}
+    crit_row = all_snap.get("critical_item_count")
+    if crit_row is None:
+        return ""
+    try:
+        count_int = int(float(crit_row["value"]))
+        count_str = str(count_int)
+    except (ValueError, TypeError):
+        count_int = None
+        count_str = str(crit_row["value"])
+    total_cls = "rh-total rh-total--alert" if (count_int is not None and count_int > 0) else "rh-total"
+    seg_data = readiness_segment_data(data, "date_category", "category")
+    rows_html = ""
+    if seg_data and any(r.get("critical_item_count") is not None for r in seg_data):
+        for r in seg_data:
+            val = r.get("critical_item_count")
+            if val is None:
+                continue
+            try:
+                count = int(float(val))
+            except (ValueError, TypeError):
+                continue
+            if count == 0:
+                continue
+            rows_html += (
+                f'<tr class="rh-tr">'
+                f'<td class="rh-td">{escape(_fmt_seg(r["segment"]))}</td>'
+                f'<td class="rh-td" style="text-align:center;">{escape(str(count))}</td>'
+                f"</tr>"
+            )
+    table = ""
+    if rows_html:
+        table = (
+            '<table class="rh-table"><thead><tr>'
+            '<th class="rh-th">Category</th>'
+            '<th class="rh-th" style="text-align:center;">Critical</th>'
+            f"</tr></thead><tbody>{rows_html}</tbody></table>"
+        )
+    return (
+        '<p class="rh-sec-title">Critical Items</p>'
+        f'<p class="{total_cls}">Total: {escape(count_str)}</p>'
+        f"{table}"
+    )
+
+
+def _rh_segment_tables(data: ReportData) -> str:
+    _SEG_MIDS = [
+        "readiness_completion_pct",
+        "open_gap_count",
+        "critical_item_count",
+        "total_requirement_count",
+    ]
+    _SEG_HDR = {
+        "readiness_completion_pct": "Completion",
+        "open_gap_count": "Gaps",
+        "critical_item_count": "Critical",
+        "total_requirement_count": "Reqs",
+    }
+
+    def _seg_table(seg_data: list[dict], first_col: str) -> str:
+        if not seg_data:
+            return ""
+        present = [m for m in _SEG_MIDS if any(r.get(m) is not None for r in seg_data)]
+        if not present:
+            return ""
+        hdrs = f'<th class="rh-th">{escape(first_col)}</th>' + "".join(
+            f'<th class="rh-th" style="text-align:center;">{escape(_SEG_HDR[m])}</th>'
+            for m in present
+        )
+        rows = ""
+        for r in seg_data:
+            cells = f'<td class="rh-td" style="font-weight:500;">{escape(_fmt_seg(r["segment"]))}</td>'
+            for m in present:
+                val = r.get(m)
+                if val is None:
+                    cells += f'<td class="rh-td" style="text-align:center;">—</td>'
+                elif m == "readiness_completion_pct":
+                    pct = float(val)
+                    color = _pdf_completion_color(pct)
+                    cells += (
+                        f'<td class="rh-td" style="text-align:center;font-weight:600;color:{color};">'
+                        f"{escape(format_metric_value(val, '%'))}</td>"
+                    )
+                else:
+                    try:
+                        txt = str(int(float(val)))
+                    except (ValueError, TypeError):
+                        txt = str(val)
+                    cells += f'<td class="rh-td" style="text-align:center;">{escape(txt)}</td>'
+            rows += f'<tr class="rh-tr">{cells}</tr>'
+        return f'<table class="rh-table"><thead><tr>{hdrs}</tr></thead><tbody>{rows}</tbody></table>'
+
+    cat_data = readiness_segment_data(data, "date_category", "category")
+    mkt_data = readiness_segment_data(data, "date_market", "market")
+    parts = []
+    if cat_data:
+        parts.append('<p class="rh-sec-title">Readiness by Category</p>')
+        parts.append(_seg_table(cat_data, "Category"))
+    if mkt_data:
+        parts.append('<p class="rh-sec-title">Readiness by Market</p>')
+        parts.append(_seg_table(mkt_data, "Market"))
+    return "\n".join(parts)
+
+
+def render_readiness_html(
+    data: ReportData,
+    title: str | None = None,
+    report_date: _date | None = None,
+) -> str:
+    """Render a polished scrollable client-facing readiness HTML page.
+
+    Sections: dark header → KPI cards → Executive Assessment →
+    Recommended Next Steps → Open Gaps → Critical Items →
+    Readiness by Category → Readiness by Market → footer.
+    No Validation block or Metric Dictionary.
+    """
+    if title is None:
+        title = Path(data.input_dir).name.replace("_", " ").title()
+    if report_date is None:
+        report_date = _date.today()
+
+    as_of = _readiness_pdf_as_of_date(data)
+    asof_html = (
+        f'<p class="rh-hdr-asof">As of {escape(as_of)}</p>' if as_of else ""
+    )
+    full_title_text = f"{title} — RFP Readiness Summary"
+
+    header_html = (
+        '<header class="rh-hdr">'
+        '<div class="rh-container">'
+        f'<h1 class="rh-hdr-title">{escape(full_title_text)}</h1>'
+        f"{asof_html}"
+        "</div>"
+        "</header>"
+    )
+    main_html = (
+        '<main class="rh-main">'
+        '<div class="rh-container">'
+        f"{_rh_kpi_cards(data)}"
+        f"{_rh_assessment(data)}"
+        f"{_rh_next_steps(data)}"
+        f"{_rh_gaps(data)}"
+        f"{_rh_critical(data)}"
+        f"{_rh_segment_tables(data)}"
+        "</div>"
+        "</main>"
+    )
+    footer_html = (
+        '<footer class="rh-footer">'
+        '<div class="rh-container">'
+        "<p>Generated from Metrics Engine outputs and rendered by Report Engine."
+        f" | Generated {escape(report_date.isoformat())}</p>"
+        "</div>"
+        "</footer>"
+    )
+
+    return (
+        "<!DOCTYPE html>\n"
+        '<html lang="en">\n'
+        "<head>\n"
+        '<meta charset="UTF-8">\n'
+        '<meta name="viewport" content="width=device-width, initial-scale=1.0">\n'
+        f"<title>{escape(full_title_text)}</title>\n"
+        f"<style>{_READINESS_HTML_STYLE}</style>\n"
+        "</head>\n"
+        "<body>\n"
+        f"{header_html}\n"
+        f"{main_html}\n"
+        f"{footer_html}\n"
+        "</body>\n"
+        "</html>"
+    )
+
+
 def render_readiness_pdf_html(
     data: ReportData,
     title: str | None = None,

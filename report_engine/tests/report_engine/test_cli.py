@@ -403,11 +403,13 @@ def test_build_readiness_summary_md_contains_next_steps_heading(readiness_input_
     assert "## Recommended Next Steps" in md
 
 
-def test_build_readiness_summary_html_contains_readiness_snapshot_heading(readiness_input_dir, tmp_path):
+def test_build_readiness_summary_html_is_polished_readiness_layout(readiness_input_dir, tmp_path):
     out = tmp_path / "out"
     _cli("build", "--input", str(readiness_input_dir), "--output", str(out), "--template", "readiness_summary")
     html = (out / "report.html").read_text(encoding="utf-8")
-    assert "<h2>Readiness Snapshot</h2>" in html
+    assert "Executive Assessment" in html
+    assert "rh-kpi-card" in html
+    assert "RFP Readiness Summary" in html
 
 
 def test_build_readiness_summary_omits_kpi_snapshot_heading(readiness_input_dir, tmp_path):

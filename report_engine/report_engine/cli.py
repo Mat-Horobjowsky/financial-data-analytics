@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from report_engine import loader, templates
-from report_engine.html import render_html, render_readiness_pdf_html
+from report_engine.html import render_html, render_readiness_html, render_readiness_pdf_html
 from report_engine.insights import build_insights, has_period_data
 from report_engine.renderer import render_markdown
 
@@ -57,7 +57,19 @@ def cmd_build(args) -> None:
         "insights": insights,
     }
 
-    html_content = render_html(data, sections=sections)
+    _resolved_title = None
+    if args.template == "readiness_summary":
+        _resolved_title = (
+            args.title
+            if args.title
+            else Path(data.input_dir).name.replace("_", " ").title()
+        )
+
+    if args.template == "readiness_summary":
+        html_content = render_readiness_html(data, title=_resolved_title)
+    else:
+        html_content = render_html(data, sections=sections)
+
     (out / "report.md").write_text(render_markdown(data, sections=sections), encoding="utf-8")
     (out / "report.html").write_text(html_content, encoding="utf-8")
 
@@ -66,12 +78,7 @@ def cmd_build(args) -> None:
     if args.pdf:
         from report_engine.pdf import render_pdf
         if args.template == "readiness_summary":
-            _pdf_title = (
-                args.title
-                if args.title
-                else Path(data.input_dir).name.replace("_", " ").title()
-            )
-            _pdf_html = render_readiness_pdf_html(data, title=_pdf_title)
+            _pdf_html = render_readiness_pdf_html(data, title=_resolved_title)
         else:
             _pdf_html = html_content
         render_pdf(_pdf_html, out / "report.pdf")
@@ -122,7 +129,7 @@ def main() -> None:
         default=None,
         help=(
             "Client or project name for the readiness PDF header "
-            "(e.g. 'NovaTech Systems'). Renders as: '<TITLE> — RFP Readiness Summary'. "
+            "(e.g. 'Demo AI Infrastructure Co.'). Renders as: '<TITLE> — RFP Readiness Summary'. "
             "Defaults to the input folder name when omitted. "
             "Only used with --template readiness_summary --pdf."
         ),
