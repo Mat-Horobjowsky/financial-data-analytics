@@ -9,7 +9,7 @@ from analytics_pipeline.stages import StageContext, StageResult
 from analytics_pipeline.summary import build_pipeline_summary, write_summary
 
 
-def _ctx(tmp_path, with_time=False, template="full_report", with_store=False, with_visuals=False, with_powerbi_export=False, sheet=None, metrics_config=None, schema_config=None):
+def _ctx(tmp_path, with_time=False, template="full_report", with_store=False, with_visuals=False, with_powerbi_export=False, sheet=None, metrics_config=None, schema_config=None, with_pdf=False, report_title=None):
     return StageContext(
         input_file=tmp_path / "data.csv",
         output_root=tmp_path / "out",
@@ -22,6 +22,8 @@ def _ctx(tmp_path, with_time=False, template="full_report", with_store=False, wi
         sheet=sheet,
         metrics_config=metrics_config,
         schema_config=schema_config,
+        with_pdf=with_pdf,
+        report_title=report_title,
     )
 
 
@@ -406,3 +408,33 @@ def test_summary_readiness_config_paths_contain_correct_filenames(tmp_path):
     s = build_pipeline_summary(ctx, _all_success_results())
     assert "readiness_metrics.yaml" in s["metrics_config_path"]
     assert "readiness_schema.yaml" in s["schema_config_path"]
+
+
+# --- with_pdf in summary ---
+
+
+def test_summary_has_with_pdf_false_by_default(tmp_path):
+    ctx = _ctx(tmp_path)
+    s = build_pipeline_summary(ctx, _all_success_results())
+    assert s["with_pdf"] is False
+
+
+def test_summary_has_with_pdf_true_when_set(tmp_path):
+    ctx = _ctx(tmp_path, with_pdf=True)
+    s = build_pipeline_summary(ctx, _all_success_results())
+    assert s["with_pdf"] is True
+
+
+# --- report_title in summary ---
+
+
+def test_summary_report_title_is_none_by_default(tmp_path):
+    ctx = _ctx(tmp_path)
+    s = build_pipeline_summary(ctx, _all_success_results())
+    assert s["report_title"] is None
+
+
+def test_summary_report_title_recorded_when_set(tmp_path):
+    ctx = _ctx(tmp_path, report_title="Demo AI Infrastructure Co.")
+    s = build_pipeline_summary(ctx, _all_success_results())
+    assert s["report_title"] == "Demo AI Infrastructure Co."

@@ -73,6 +73,9 @@ def test_readiness_full_pipeline(tmp_path):
             "--output", str(out),
             "--metrics-config", str(metrics_config),
             "--schema-config", str(schema_config),
+            "--template", "readiness_summary",
+            "--pdf",
+            "--report-title", "Demo AI Infrastructure Co.",
             "--with-visuals",
             "--with-powerbi-export",
         ],
@@ -89,6 +92,7 @@ def test_readiness_full_pipeline(tmp_path):
 
     expected_files = [
         out / "pipeline_summary.json",
+        out / "report" / "report.pdf",
         out / "store" / "analytics.duckdb",
         out / "visuals" / "readiness_dashboard.html",
         out / "powerbi" / "readiness_kpis.csv",
@@ -105,6 +109,9 @@ def test_readiness_full_pipeline(tmp_path):
     assert summary["sheet"] == "PowerBI_Export"
     assert summary["with_powerbi_export"] is True
     assert summary["with_visuals"] is True
+    assert summary["with_pdf"] is True
+    assert summary["report_title"] == "Demo AI Infrastructure Co."
+    assert summary["template"] == "readiness_summary"
     assert "readiness_metrics.yaml" in summary["metrics_config_path"]
     assert "readiness_schema.yaml" in summary["schema_config_path"]
     for stage in ("intake", "metrics", "report", "store", "visuals", "powerbi_export"):

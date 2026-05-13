@@ -282,6 +282,64 @@ def test_build_report_cmd_template_executive_summary(tmp_path):
     assert cmd[idx + 1] == "executive_summary"
 
 
+def test_build_report_cmd_no_pdf_by_default(tmp_path):
+    ctx = _ctx(tmp_path)
+    cmd = build_report_cmd(ctx)
+    assert "--pdf" not in cmd
+
+
+def test_build_report_cmd_pdf_flag_included_when_enabled(tmp_path):
+    ctx = StageContext(
+        input_file=tmp_path / "data.csv",
+        output_root=tmp_path / "out",
+        with_time=False,
+        template="readiness_summary",
+        results={},
+        with_pdf=True,
+    )
+    cmd = build_report_cmd(ctx)
+    assert "--pdf" in cmd
+
+
+def test_build_report_cmd_no_title_flag_by_default(tmp_path):
+    ctx = _ctx(tmp_path)
+    cmd = build_report_cmd(ctx)
+    assert "--title" not in cmd
+
+
+def test_build_report_cmd_title_flag_included_when_set(tmp_path):
+    ctx = StageContext(
+        input_file=tmp_path / "data.csv",
+        output_root=tmp_path / "out",
+        with_time=False,
+        template="readiness_summary",
+        results={},
+        with_pdf=True,
+        report_title="Demo AI Infrastructure Co.",
+    )
+    cmd = build_report_cmd(ctx)
+    assert "--title" in cmd
+    idx = cmd.index("--title")
+    assert cmd[idx + 1] == "Demo AI Infrastructure Co."
+
+
+def test_build_report_cmd_title_without_pdf(tmp_path):
+    ctx = StageContext(
+        input_file=tmp_path / "data.csv",
+        output_root=tmp_path / "out",
+        with_time=False,
+        template="readiness_summary",
+        results={},
+        with_pdf=False,
+        report_title="Some Title",
+    )
+    cmd = build_report_cmd(ctx)
+    assert "--pdf" not in cmd
+    assert "--title" in cmd
+    idx = cmd.index("--title")
+    assert cmd[idx + 1] == "Some Title"
+
+
 # --- ACTIVE_STAGES ---
 
 

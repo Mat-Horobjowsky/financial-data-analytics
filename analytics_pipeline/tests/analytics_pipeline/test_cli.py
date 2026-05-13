@@ -513,3 +513,42 @@ def test_client_context_missing_file_exits_nonzero():
         except SystemExit as e:
             code = e.code
     assert code != 0
+
+
+# --- --pdf flag ---
+
+
+def test_pdf_defaults_to_false():
+    ctx = _capture_ctx(["analytics-pipeline", "run", "--input", "x.csv"])
+    assert ctx.with_pdf is False
+
+
+def test_pdf_flag_sets_context():
+    ctx = _capture_ctx(["analytics-pipeline", "run", "--input", "x.csv", "--pdf"])
+    assert ctx.with_pdf is True
+
+
+# --- --report-title flag ---
+
+
+def test_report_title_defaults_to_none():
+    ctx = _capture_ctx(["analytics-pipeline", "run", "--input", "x.csv"])
+    assert ctx.report_title is None
+
+
+def test_report_title_flag_sets_context():
+    ctx = _capture_ctx([
+        "analytics-pipeline", "run", "--input", "x.csv",
+        "--report-title", "Demo AI Infrastructure Co.",
+    ])
+    assert ctx.report_title == "Demo AI Infrastructure Co."
+
+
+def test_report_title_with_pdf_sets_both():
+    ctx = _capture_ctx([
+        "analytics-pipeline", "run", "--input", "x.csv",
+        "--pdf",
+        "--report-title", "Demo AI Infrastructure Co.",
+    ])
+    assert ctx.with_pdf is True
+    assert ctx.report_title == "Demo AI Infrastructure Co."

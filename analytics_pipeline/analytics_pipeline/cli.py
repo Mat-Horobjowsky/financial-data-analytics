@@ -44,6 +44,8 @@ def cmd_run(args) -> None:
         schema_config=schema_config,
         sheet=args.sheet,
         client_context_path=client_context,
+        with_pdf=args.pdf,
+        report_title=args.report_title,
     )
 
     results = run_pipeline(ctx)
@@ -127,6 +129,23 @@ def main() -> None:
         dest="client_context",
         default=None,
         help="Optional path to client_context.csv; copied into powerbi/ when --with-powerbi-export is used",
+    )
+    run_p.add_argument(
+        "--pdf",
+        dest="pdf",
+        action="store_true",
+        default=False,
+        help="Generate report.pdf from the Report Engine output (requires report_engine[pdf])",
+    )
+    run_p.add_argument(
+        "--report-title",
+        dest="report_title",
+        default=None,
+        help=(
+            "Title forwarded to Report Engine --title; used as the PDF report header. "
+            "Defaults to the input folder name when omitted. "
+            "Recommended with --template readiness_summary --pdf."
+        ),
     )
 
     args = parser.parse_args()
