@@ -762,3 +762,435 @@ def test_render_html_metrics_detail_omits_key_insights(time_enriched_data):
     sections = get_sections("metrics_detail")
     html = render_html(time_enriched_data, sections=sections)
     assert "<h2>Key Insights</h2>" not in html
+
+
+# ── render_readiness_pdf_html tests ───────────────────────────────────────────
+
+from report_engine.html import render_readiness_pdf_html
+
+
+@pytest.fixture
+def readiness_pdf_data():
+    date_rows = [
+        ("date_only", "2025-01-15", "readiness_completion_pct", "Readiness Completion %", 50.0, "%"),
+        ("date_only", "2025-01-15", "open_gap_count", "Open Gap Count", 10.0, "gaps"),
+        ("date_only", "2025-01-15", "critical_item_count", "Critical Item Count", 4.0, "items"),
+        ("date_only", "2025-01-15", "total_requirement_count", "Total Requirement Count", 20.0, "requirements"),
+    ]
+    cat_rows = [
+        ("date_category", "2025-01-15", "readiness_completion_pct", "Readiness Completion %", 66.7, "%"),
+        ("date_category", "2025-01-15", "open_gap_count", "Open Gap Count", 1.0, "gaps"),
+        ("date_category", "2025-01-15", "critical_item_count", "Critical Item Count", 1.0, "items"),
+        ("date_category", "2025-01-15", "total_requirement_count", "Total Requirement Count", 3.0, "requirements"),
+    ]
+    n_date = len(date_rows)
+    n_cat = len(cat_rows)
+    return ReportData(
+        input_dir=Path("outputs/test_metrics"),
+        validation_status="passed_with_warnings",
+        validation_errors=[],
+        validation_warnings=["Some internal warning about schema"],
+        long_metrics=pd.DataFrame({
+            "rollup_level": ["date_only"] * n_date + ["date_category"] * n_cat,
+            "date": ["2025-01-15"] * (n_date + n_cat),
+            "metric_id": [r[2] for r in date_rows] + [r[2] for r in cat_rows],
+            "label": [r[3] for r in date_rows] + [r[3] for r in cat_rows],
+            "value": [r[4] for r in date_rows] + [r[4] for r in cat_rows],
+            "unit": [r[5] for r in date_rows] + [r[5] for r in cat_rows],
+            "category": [None] * n_date + ["site_control"] * n_cat,
+        }),
+        wide_metrics=pd.DataFrame(),
+        metric_dictionary=pd.DataFrame(),
+    )
+
+
+def test_render_readiness_pdf_html_returns_string(readiness_pdf_data):
+    result = render_readiness_pdf_html(readiness_pdf_data, title="Test Client")
+    assert isinstance(result, str)
+
+
+def test_render_readiness_pdf_html_is_valid_html_document(readiness_pdf_data):
+    html = render_readiness_pdf_html(readiness_pdf_data, title="Test Client")
+    assert "<!DOCTYPE html>" in html
+    assert "<html" in html
+    assert "</html>" in html
+
+
+def test_render_readiness_pdf_html_has_dark_header(readiness_pdf_data):
+    html = render_readiness_pdf_html(readiness_pdf_data, title="Test Client")
+    assert "#1a202c" in html
+
+
+def test_render_readiness_pdf_html_uses_provided_title(readiness_pdf_data):
+    html = render_readiness_pdf_html(readiness_pdf_data, title="NovaTech Systems")
+    assert "NovaTech Systems" in html
+
+
+def test_render_readiness_pdf_html_has_rfp_readiness_suffix(readiness_pdf_data):
+    html = render_readiness_pdf_html(readiness_pdf_data, title="NovaTech Systems")
+    assert "RFP Readiness Summary" in html
+
+
+def test_render_readiness_pdf_html_derives_title_from_folder(readiness_pdf_data):
+    html = render_readiness_pdf_html(readiness_pdf_data)
+    assert "Test Metrics" in html
+
+
+def test_render_readiness_pdf_html_has_kpi_completion_value(readiness_pdf_data):
+    html = render_readiness_pdf_html(readiness_pdf_data, title="Test Client")
+    assert "50%" in html
+
+
+def test_render_readiness_pdf_html_has_next_steps_section(readiness_pdf_data):
+    html = render_readiness_pdf_html(readiness_pdf_data, title="Test Client")
+    assert "RECOMMENDED NEXT STEPS" in html
+
+
+def test_render_readiness_pdf_html_omits_validation_status(readiness_pdf_data):
+    html = render_readiness_pdf_html(readiness_pdf_data, title="Test Client")
+    assert "passed_with_warnings" not in html
+
+
+def test_render_readiness_pdf_html_omits_validation_warnings(readiness_pdf_data):
+    html = render_readiness_pdf_html(readiness_pdf_data, title="Test Client")
+    assert "Some internal warning about schema" not in html
+
+
+def test_render_readiness_pdf_html_omits_metric_dictionary(readiness_pdf_data):
+    html = render_readiness_pdf_html(readiness_pdf_data, title="Test Client")
+    assert "Metric Dictionary" not in html
+    assert "METRIC DICTIONARY" not in html
+
+
+def test_render_readiness_pdf_html_is_landscape(readiness_pdf_data):
+    html = render_readiness_pdf_html(readiness_pdf_data, title="Test Client")
+    assert "landscape" in html
+
+
+def test_render_readiness_pdf_html_has_no_page_break(readiness_pdf_data):
+    html = render_readiness_pdf_html(readiness_pdf_data, title="Test Client")
+    assert "page-break-before:always" not in html
+
+
+def test_render_readiness_pdf_html_formats_segment_labels(readiness_pdf_data):
+    html = render_readiness_pdf_html(readiness_pdf_data, title="Test Client")
+    assert "Site Control" in html
+    assert "site_control" not in html
+
+
+def test_render_readiness_pdf_html_as_of_date_from_data_not_report_date(readiness_pdf_data):
+    far_future = date(2999, 12, 31)
+    html = render_readiness_pdf_html(readiness_pdf_data, title="Test Client", report_date=far_future)
+    # Data metric period date appears as "As of..." in the header band
+    assert "As of 2025-01-15" in html
+    # Generation date appears as "Generated 2999-12-31" in the footer
+    assert "Generated 2999-12-31" in html
+    # Generation date must not appear before KEY METRICS (i.e. not in the header)
+    pos_kpi = html.index("KEY METRICS")
+    pos_gen = html.index("2999-12-31")
+    assert pos_gen > pos_kpi
+
+
+def test_render_readiness_pdf_html_footer_has_generated_marker(readiness_pdf_data):
+    html = render_readiness_pdf_html(readiness_pdf_data, title="Test Client")
+    assert "Generated from Metrics Engine" in html
+
+
+def test_render_readiness_pdf_html_footer_has_source_line(readiness_pdf_data):
+    html = render_readiness_pdf_html(readiness_pdf_data, title="Test Client")
+    assert "Report Engine" in html
+
+
+# ── Executive Assessment section tests ────────────────────────────────────────
+
+from report_engine.insights import build_readiness_assessment
+
+
+def test_render_readiness_pdf_html_has_executive_assessment_section(readiness_pdf_data):
+    html = render_readiness_pdf_html(readiness_pdf_data, title="Test Client")
+    assert "EXECUTIVE ASSESSMENT" in html
+
+
+def test_render_readiness_pdf_html_assessment_before_next_steps(readiness_pdf_data):
+    html = render_readiness_pdf_html(readiness_pdf_data, title="Test Client")
+    pos_assess = html.index("EXECUTIVE ASSESSMENT")
+    pos_steps = html.index("RECOMMENDED NEXT STEPS")
+    assert pos_assess < pos_steps
+
+
+def test_render_readiness_pdf_html_assessment_includes_completion_pct(readiness_pdf_data):
+    # fixture has readiness_completion_pct = 50.0 → "50%"
+    html = render_readiness_pdf_html(readiness_pdf_data, title="Test Client")
+    assess_start = html.index("EXECUTIVE ASSESSMENT")
+    next_steps_start = html.index("RECOMMENDED NEXT STEPS")
+    assess_block = html[assess_start:next_steps_start]
+    assert "50%" in assess_block
+
+
+def test_render_readiness_pdf_html_assessment_includes_gap_count(readiness_pdf_data):
+    # fixture has open_gap_count = 10
+    html = render_readiness_pdf_html(readiness_pdf_data, title="Test Client")
+    assess_start = html.index("EXECUTIVE ASSESSMENT")
+    next_steps_start = html.index("RECOMMENDED NEXT STEPS")
+    assess_block = html[assess_start:next_steps_start]
+    assert "10 open gaps" in assess_block
+
+
+def test_render_readiness_pdf_html_assessment_includes_critical_count(readiness_pdf_data):
+    # fixture has critical_item_count = 4
+    html = render_readiness_pdf_html(readiness_pdf_data, title="Test Client")
+    assess_start = html.index("EXECUTIVE ASSESSMENT")
+    next_steps_start = html.index("RECOMMENDED NEXT STEPS")
+    assess_block = html[assess_start:next_steps_start]
+    assert "4 critical items unresolved" in assess_block
+
+
+def test_render_readiness_pdf_html_assessment_identifies_weakest_category(readiness_pdf_data):
+    # fixture has one category: site_control → formatted as "Site Control"
+    html = render_readiness_pdf_html(readiness_pdf_data, title="Test Client")
+    assess_start = html.index("EXECUTIVE ASSESSMENT")
+    next_steps_start = html.index("RECOMMENDED NEXT STEPS")
+    assess_block = html[assess_start:next_steps_start]
+    assert "Site Control" in assess_block
+
+
+def test_render_readiness_pdf_html_assessment_holds_when_below_60pct(readiness_pdf_data):
+    # fixture has 50% completion → transaction posture = hold
+    html = render_readiness_pdf_html(readiness_pdf_data, title="Test Client")
+    assess_start = html.index("EXECUTIVE ASSESSMENT")
+    next_steps_start = html.index("RECOMMENDED NEXT STEPS")
+    assess_block = html[assess_start:next_steps_start]
+    assert "Hold" in assess_block
+
+
+def test_render_readiness_pdf_html_assessment_before_next_steps_and_gaps(readiness_pdf_data):
+    # In landscape layout, assessment (left col) appears before next steps and gap sections.
+    html = render_readiness_pdf_html(readiness_pdf_data, title="Test Client")
+    pos_assess = html.index("EXECUTIVE ASSESSMENT")
+    pos_steps = html.index("RECOMMENDED NEXT STEPS")
+    pos_gaps = html.index('sec-title">OPEN GAPS')
+    assert pos_assess < pos_steps
+    assert pos_assess < pos_gaps
+
+
+# ── build_readiness_assessment unit tests ─────────────────────────────────────
+
+def test_build_readiness_assessment_returns_expected_keys(readiness_pdf_data):
+    result = build_readiness_assessment(readiness_pdf_data)
+    for key in ("posture", "summary", "weakness_note", "transaction_posture",
+                "overall_pct", "gap_count", "crit_count", "weakest_category", "weakest_pct"):
+        assert key in result
+
+
+def test_build_readiness_assessment_not_rfp_ready_when_low_completion_and_crits(readiness_pdf_data):
+    # fixture: 50% completion, 4 critical items → "Not RFP-Ready"
+    result = build_readiness_assessment(readiness_pdf_data)
+    assert result["posture"] == "Not RFP-Ready"
+
+
+def test_build_readiness_assessment_hold_posture_when_below_60pct(readiness_pdf_data):
+    result = build_readiness_assessment(readiness_pdf_data)
+    assert "Hold" in result["transaction_posture"]
+
+
+def test_build_readiness_assessment_summary_contains_completion_pct(readiness_pdf_data):
+    result = build_readiness_assessment(readiness_pdf_data)
+    assert "50%" in result["summary"]
+
+
+def test_build_readiness_assessment_summary_contains_gap_count(readiness_pdf_data):
+    result = build_readiness_assessment(readiness_pdf_data)
+    assert "10 open gaps" in result["summary"]
+
+
+def test_build_readiness_assessment_identifies_weakest_category(readiness_pdf_data):
+    result = build_readiness_assessment(readiness_pdf_data)
+    assert result["weakest_category"] == "site_control"
+
+
+def test_build_readiness_assessment_rfp_ready_when_high_completion_no_crits():
+    data = ReportData(
+        input_dir=Path("outputs/test"),
+        validation_status="passed",
+        validation_errors=[],
+        validation_warnings=[],
+        long_metrics=pd.DataFrame({
+            "rollup_level": ["date_only", "date_only", "date_only", "date_only"],
+            "date": ["2025-01-15"] * 4,
+            "metric_id": [
+                "readiness_completion_pct", "open_gap_count",
+                "critical_item_count", "total_requirement_count",
+            ],
+            "label": ["Completion", "Gaps", "Critical", "Requirements"],
+            "value": [85.0, 3.0, 0.0, 20.0],
+            "unit": ["%", "gaps", "items", "requirements"],
+        }),
+        wide_metrics=pd.DataFrame(),
+        metric_dictionary=pd.DataFrame(),
+    )
+    result = build_readiness_assessment(data)
+    assert result["posture"] == "RFP-Ready"
+    assert "Proceed" in result["transaction_posture"]
+
+
+def test_build_readiness_assessment_at_risk_when_crits_but_high_pct():
+    data = ReportData(
+        input_dir=Path("outputs/test"),
+        validation_status="passed",
+        validation_errors=[],
+        validation_warnings=[],
+        long_metrics=pd.DataFrame({
+            "rollup_level": ["date_only", "date_only", "date_only"],
+            "date": ["2025-01-15"] * 3,
+            "metric_id": [
+                "readiness_completion_pct", "open_gap_count", "critical_item_count",
+            ],
+            "label": ["Completion", "Gaps", "Critical"],
+            "value": [72.0, 2.0, 1.0],
+            "unit": ["%", "gaps", "items"],
+        }),
+        wide_metrics=pd.DataFrame(),
+        metric_dictionary=pd.DataFrame(),
+    )
+    result = build_readiness_assessment(data)
+    assert result["posture"] == "At Risk"
+    assert "critical blockers" in result["transaction_posture"]
+
+
+def test_render_readiness_pdf_html_has_open_gaps_section(readiness_pdf_data):
+    html = render_readiness_pdf_html(readiness_pdf_data, title="Test Client")
+    assert 'sec-title">OPEN GAPS' in html
+
+
+def test_render_readiness_pdf_html_has_critical_items_section(readiness_pdf_data):
+    html = render_readiness_pdf_html(readiness_pdf_data, title="Test Client")
+    assert 'sec-title">CRITICAL ITEMS' in html
+
+
+def test_render_readiness_pdf_html_has_readiness_by_category(readiness_pdf_data):
+    html = render_readiness_pdf_html(readiness_pdf_data, title="Test Client")
+    assert "READINESS BY CATEGORY" in html
+
+
+def test_render_readiness_pdf_html_next_steps_before_open_gaps_section(readiness_pdf_data):
+    # Next steps (left column) appears before gap section heading (right column) in HTML order.
+    html = render_readiness_pdf_html(readiness_pdf_data, title="Test Client")
+    pos_steps = html.index("RECOMMENDED NEXT STEPS")
+    pos_gaps = html.index('sec-title">OPEN GAPS')
+    assert pos_steps < pos_gaps
+
+
+# ── PDF zero-row filtering tests ──────────────────────────────────────────────
+# Open Gaps and Critical Items summaries omit categories with zero counts.
+# Full Readiness by Category table is unaffected.
+
+@pytest.fixture
+def readiness_pdf_mixed_data():
+    """Three categories: alpha (non-zero gaps+crits), beta (zero gaps, zero crits), gamma (non-zero gaps, zero crits)."""
+    date_rows = [
+        ("date_only", "2025-03-01", "readiness_completion_pct", "Readiness Completion %", 55.0, "%"),
+        ("date_only", "2025-03-01", "open_gap_count", "Open Gap Count", 5.0, "gaps"),
+        ("date_only", "2025-03-01", "critical_item_count", "Critical Item Count", 2.0, "items"),
+        ("date_only", "2025-03-01", "total_requirement_count", "Total Requirement Count", 18.0, "requirements"),
+    ]
+    cat_rows = [
+        # alpha: 3 gaps, 2 crits
+        ("date_category", "2025-03-01", "readiness_completion_pct", "Readiness Completion %", 40.0, "%"),
+        ("date_category", "2025-03-01", "open_gap_count", "Open Gap Count", 3.0, "gaps"),
+        ("date_category", "2025-03-01", "critical_item_count", "Critical Item Count", 2.0, "items"),
+        # beta: 0 gaps, 0 crits
+        ("date_category", "2025-03-01", "readiness_completion_pct", "Readiness Completion %", 80.0, "%"),
+        ("date_category", "2025-03-01", "open_gap_count", "Open Gap Count", 0.0, "gaps"),
+        ("date_category", "2025-03-01", "critical_item_count", "Critical Item Count", 0.0, "items"),
+        # gamma: 2 gaps, 0 crits
+        ("date_category", "2025-03-01", "readiness_completion_pct", "Readiness Completion %", 60.0, "%"),
+        ("date_category", "2025-03-01", "open_gap_count", "Open Gap Count", 2.0, "gaps"),
+        ("date_category", "2025-03-01", "critical_item_count", "Critical Item Count", 0.0, "items"),
+    ]
+    n_date = len(date_rows)
+    n_cat = len(cat_rows)
+    categories = ["alpha"] * 3 + ["beta"] * 3 + ["gamma"] * 3
+    return ReportData(
+        input_dir=Path("outputs/test_mixed"),
+        validation_status="passed",
+        validation_errors=[],
+        validation_warnings=[],
+        long_metrics=pd.DataFrame({
+            "rollup_level": ["date_only"] * n_date + ["date_category"] * n_cat,
+            "date": ["2025-03-01"] * (n_date + n_cat),
+            "metric_id": [r[2] for r in date_rows] + [r[2] for r in cat_rows],
+            "label": [r[3] for r in date_rows] + [r[3] for r in cat_rows],
+            "value": [r[4] for r in date_rows] + [r[4] for r in cat_rows],
+            "unit": [r[5] for r in date_rows] + [r[5] for r in cat_rows],
+            "category": [None] * n_date + categories,
+        }),
+        wide_metrics=pd.DataFrame(),
+        metric_dictionary=pd.DataFrame(),
+    )
+
+
+def test_readiness_pdf_gaps_omits_zero_count_category(readiness_pdf_mixed_data):
+    html = render_readiness_pdf_html(readiness_pdf_mixed_data, title="Test Client")
+    gaps_start = html.index('sec-title">OPEN GAPS')
+    crit_start = html.index('sec-title">CRITICAL ITEMS')
+    gaps_block = html[gaps_start:crit_start]
+    # beta has 0 open gaps — must not appear in the gaps summary table
+    assert "Beta" not in gaps_block
+
+
+def test_readiness_pdf_gaps_keeps_nonzero_count_categories(readiness_pdf_mixed_data):
+    html = render_readiness_pdf_html(readiness_pdf_mixed_data, title="Test Client")
+    gaps_start = html.index('sec-title">OPEN GAPS')
+    crit_start = html.index('sec-title">CRITICAL ITEMS')
+    gaps_block = html[gaps_start:crit_start]
+    # alpha (3 gaps) and gamma (2 gaps) must appear
+    assert "Alpha" in gaps_block
+    assert "Gamma" in gaps_block
+
+
+def test_readiness_pdf_critical_omits_zero_count_categories(readiness_pdf_mixed_data):
+    html = render_readiness_pdf_html(readiness_pdf_mixed_data, title="Test Client")
+    crit_start = html.index('sec-title">CRITICAL ITEMS')
+    seg_start = html.index("READINESS BY CATEGORY")
+    crit_block = html[crit_start:seg_start]
+    # beta (0 crits) and gamma (0 crits) must not appear in critical items summary table
+    assert "Beta" not in crit_block
+    assert "Gamma" not in crit_block
+
+
+def test_readiness_pdf_critical_keeps_nonzero_count_category(readiness_pdf_mixed_data):
+    html = render_readiness_pdf_html(readiness_pdf_mixed_data, title="Test Client")
+    crit_start = html.index('sec-title">CRITICAL ITEMS')
+    seg_start = html.index("READINESS BY CATEGORY")
+    crit_block = html[crit_start:seg_start]
+    # alpha (2 crits) must appear
+    assert "Alpha" in crit_block
+
+
+def test_readiness_pdf_segment_table_includes_all_categories(readiness_pdf_mixed_data):
+    html = render_readiness_pdf_html(readiness_pdf_mixed_data, title="Test Client")
+    seg_start = html.index("READINESS BY CATEGORY")
+    seg_end = len(html)
+    seg_block = html[seg_start:seg_end]
+    # All three categories must appear in the full segment table regardless of zero counts
+    assert "Alpha" in seg_block
+    assert "Beta" in seg_block
+    assert "Gamma" in seg_block
+
+
+def test_readiness_pdf_gaps_total_count_always_shown(readiness_pdf_mixed_data):
+    html = render_readiness_pdf_html(readiness_pdf_mixed_data, title="Test Client")
+    gaps_start = html.index('sec-title">OPEN GAPS')
+    crit_start = html.index('sec-title">CRITICAL ITEMS')
+    gaps_block = html[gaps_start:crit_start]
+    # The overall total (5) must still be shown even when rows are filtered
+    assert "Total: 5" in gaps_block
+
+
+def test_readiness_pdf_critical_total_count_always_shown(readiness_pdf_mixed_data):
+    html = render_readiness_pdf_html(readiness_pdf_mixed_data, title="Test Client")
+    crit_start = html.index('sec-title">CRITICAL ITEMS')
+    seg_start = html.index("READINESS BY CATEGORY")
+    crit_block = html[crit_start:seg_start]
+    # The overall total (2) must still be shown
+    assert "Total: 2" in crit_block

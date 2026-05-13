@@ -71,20 +71,34 @@ Produces `outputs/pipeline_readiness/visuals/readiness_dashboard.html`.
 
 ### Readiness demo from Excel workbook
 
-Use `--sheet` to select a named sheet from a multi-sheet XLSX file:
+The readiness workflow begins with a pre-processing step that resolves requirement
+statuses from the intake workbook before the pipeline runs.
+
+**Step 1 — Build demo workbook and client context** (requires `readiness_workbook` installed):
+
+```bash
+readiness-workbook build \
+  --workbook examples/readiness_demo/client_intake_template.xlsx \
+  --output examples/readiness_demo/client_intake_template_demo.xlsx \
+  --client-context-output examples/readiness_demo/client_context.csv \
+  --demo-context
+```
+
+**Step 2 — Run the full pipeline** using `--sheet` to select the populated sheet:
 
 ```bash
 analytics-pipeline run \
-  --input examples/readiness_demo/client_intake_template.xlsx \
+  --input examples/readiness_demo/client_intake_template_demo.xlsx \
   --sheet PowerBI_Export \
-  --output outputs/demo_client/pipeline \
+  --output outputs/demo_readiness_client \
   --metrics-config metrics_engine/config/readiness_metrics.yaml \
   --schema-config metrics_engine/config/readiness_schema.yaml \
   --with-visuals \
-  --with-powerbi-export
+  --with-powerbi-export \
+  --client-context examples/readiness_demo/client_context.csv
 ```
 
-Produces `outputs/demo_client/pipeline/visuals/readiness_dashboard.html` and `outputs/demo_client/pipeline/powerbi/*.csv`.
+Produces `outputs/demo_readiness_client/visuals/readiness_dashboard.html` and `outputs/demo_readiness_client/powerbi/*.csv`.
 
 ## Output structure
 
@@ -166,7 +180,7 @@ pip install -e analytics_pipeline
 To install everything at once from the repo root:
 
 ```bash
-pip install -e intake_engine -e metrics_engine -e report_engine -e analytics_store -e visuals_engine -e analytics_pipeline
+pip install -e intake_engine -e metrics_engine -e report_engine -e analytics_store -e visuals_engine -e readiness_workbook -e analytics_pipeline
 ```
 
 ## Setup

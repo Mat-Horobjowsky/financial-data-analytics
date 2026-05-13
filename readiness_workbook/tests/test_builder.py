@@ -1,25 +1,19 @@
-"""Tests for examples/readiness_demo/build_powerbi_export.py"""
+"""Tests for readiness_workbook.builder and readiness_workbook.demo_context."""
 
 from __future__ import annotations
 
 import hashlib
 import shutil
-import sys
 from datetime import date
 from pathlib import Path
 
 import openpyxl
 import pytest
 
-DEMO_DIR = Path(__file__).parent.parent
-sys.path.insert(0, str(DEMO_DIR))
-
-from build_powerbi_export import (
+from readiness_workbook.builder import (
     CLIENT_CONTEXT_COLUMNS,
-    DEMO_CLIENT_VALUES,
-    DEMO_CONTEXT_DATE,
     POWERBI_EXPORT_COLUMNS,
-    apply_demo_context,
+    _read_client_export,
     build_powerbi_export,
     normalize_answer,
     resolve_status,
@@ -27,8 +21,15 @@ from build_powerbi_export import (
     write_client_export_sheet,
     write_powerbi_export,
 )
+from readiness_workbook.demo_context import (
+    DEMO_CLIENT_VALUES,
+    DEMO_CONTEXT_DATE,
+    apply_demo_context,
+)
 
-SAMPLE_WORKBOOK = DEMO_DIR / "client_intake_template.xlsx"
+# Canonical demo source workbook — kept in examples/ as a first-class demo artifact.
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+SAMPLE_WORKBOOK = _REPO_ROOT / "examples" / "readiness_demo" / "client_intake_template.xlsx"
 
 
 # ---------------------------------------------------------------------------
@@ -326,7 +327,7 @@ class TestWritePowerBIExport:
 
 
 # ---------------------------------------------------------------------------
-# Integration: sample workbook
+# Integration: sample workbook (skipped if not present)
 # ---------------------------------------------------------------------------
 
 class TestSampleWorkbook:
@@ -378,7 +379,6 @@ class TestSampleWorkbook:
         rows = build_powerbi_export(SAMPLE_WORKBOOK)
         statuses = {r["requirement_name"]: r["status"] for r in rows}
 
-        # Spot-check a few known defaults from Requirement_Map
         assert statuses["Phase 1 MW requirement defined"] == "complete"
         assert statuses["Phase 2 expansion scope"] == "in_progress"
         assert statuses["Minimum viable capacity confirmed"] == "not_started"
@@ -512,14 +512,12 @@ class TestSampleWorkbookClientContext:
     )
     def test_sidecar_written_alongside_generated_workbook(self, tmp_path):
         import csv as _csv
-        import openpyxl as _openpyxl
 
         out_wb = tmp_path / "generated.xlsx"
         ctx_out = tmp_path / "client_context.csv"
 
         shutil.copy2(str(SAMPLE_WORKBOOK), str(out_wb))
-        wb = _openpyxl.load_workbook(str(SAMPLE_WORKBOOK), data_only=True)
-        from build_powerbi_export import _read_client_export
+        wb = openpyxl.load_workbook(str(SAMPLE_WORKBOOK), data_only=True)
         client = _read_client_export(wb)
         write_client_context(client, ctx_out)
 
@@ -539,10 +537,8 @@ def _run_demo_pipeline(src_path: Path, out_dir: Path) -> tuple[Path, Path]:
     """Copy src → output, apply demo context, write PowerBI_Export + CSV.
 
     Returns (output_workbook_path, client_context_csv_path).
-    Mirrors what main() does with --demo-context.
+    Mirrors what cli.cmd_build does with --demo-context.
     """
-    from build_powerbi_export import _read_client_export
-
     out_dir.mkdir(parents=True, exist_ok=True)
     out_wb = out_dir / "demo_output.xlsx"
     ctx_out = out_dir / "client_context.csv"
@@ -563,19 +559,16 @@ def _run_demo_pipeline(src_path: Path, out_dir: Path) -> tuple[Path, Path]:
 
 class TestDemoContext:
     def test_apply_demo_context_sets_project_id(self, tmp_path):
-        """apply_demo_context overrides project_id with the demo value."""
         base = {"project_id": "ORIGINAL", "assessment_date": date(2024, 1, 1)}
         result = apply_demo_context(base)
         assert result["project_id"] == "DEMO-READY-001"
 
     def test_apply_demo_context_preserves_extra_source_fields(self, tmp_path):
-        """Source fields not in DEMO_CLIENT_VALUES are kept in the merged dict."""
         base = {"decision_makers_identified": "yes", "project_id": "X"}
         result = apply_demo_context(base)
         assert result["decision_makers_identified"] == "yes"
 
     def test_demo_pipeline_client_context_csv_has_all_columns(self, tmp_path):
-        """client_context.csv written by the demo pipeline has every CLIENT_CONTEXT_COLUMNS field."""
         import csv as _csv
 
         src = _make_minimal_workbook(tmp_path)
@@ -588,7 +581,6 @@ class TestDemoContext:
             assert col in rows[0], f"Missing column in client_context.csv: {col}"
 
     def test_demo_pipeline_client_context_csv_has_expected_values(self, tmp_path):
-        """Spot-check that all DEMO_CLIENT_VALUES keys land in client_context.csv correctly."""
         import csv as _csv
 
         src = _make_minimal_workbook(tmp_path)
@@ -618,7 +610,6 @@ class TestDemoContext:
         assert "RFP" in row["key_decision_question"]
 
     def test_demo_pipeline_output_workbook_client_export_has_demo_values(self, tmp_path):
-        """The generated workbook's Client_Export sheet contains demo field values."""
         src = _make_minimal_workbook(tmp_path)
         out_wb, _ = _run_demo_pipeline(src, tmp_path / "out")
 
@@ -634,7 +625,6 @@ class TestDemoContext:
         assert values.get("target_market") == "Midwest"
 
     def test_demo_pipeline_powerbi_export_uses_demo_project_id(self, tmp_path):
-        """PowerBI_Export rows in the generated workbook carry the demo project_id."""
         src = _make_minimal_workbook(tmp_path)
         out_wb, _ = _run_demo_pipeline(src, tmp_path / "out")
 
@@ -648,7 +638,6 @@ class TestDemoContext:
             assert r[pid_col] == "DEMO-READY-001", f"Expected DEMO-READY-001, got {r[pid_col]!r}"
 
     def test_demo_pipeline_source_workbook_not_modified(self, tmp_path):
-        """The source workbook byte-for-byte unchanged after the demo pipeline runs."""
         src = _make_minimal_workbook(tmp_path)
         original_hash = _file_md5(src)
 
@@ -657,7 +646,6 @@ class TestDemoContext:
         assert _file_md5(src) == original_hash, "Source workbook was modified by demo pipeline!"
 
     def test_without_demo_context_behavior_unchanged(self, tmp_path):
-        """Without --demo-context the original project_id from the source is used."""
         import csv as _csv
 
         src = _make_minimal_workbook(tmp_path, project_id="ORIGINAL-001")
@@ -668,7 +656,6 @@ class TestDemoContext:
         rows = build_powerbi_export(src)
         write_powerbi_export(out_wb, rows)
 
-        from build_powerbi_export import _read_client_export
         wb = openpyxl.load_workbook(str(src), data_only=True)
         client = _read_client_export(wb)
         write_client_context(client, ctx_out)

@@ -7,8 +7,8 @@ To run:
     ANALYTICS_PIPELINE_INTEGRATION_TESTS=1 py -m pytest analytics_pipeline/tests/analytics_pipeline/test_integration_readiness.py -v
 
 The test follows the two-step readiness demo workflow:
-  1. generate client_intake_template_generated.xlsx from the source template
-  2. run the full pipeline on the generated workbook
+  1. readiness-workbook build: generate PowerBI_Export sheet from Requirement_Map + Client_Export
+  2. analytics-pipeline run: run the full pipeline on the generated workbook
 """
 from __future__ import annotations
 
@@ -42,10 +42,10 @@ def test_readiness_full_pipeline(tmp_path):
 
     # Step 1: generate PowerBI_Export rows from Requirement_Map + Client_Export
     generated_workbook = tmp_path / "client_intake_template_generated.xlsx"
+    rw_exe = shutil.which("readiness-workbook") or "readiness-workbook"
     gen_result = subprocess.run(
         [
-            sys.executable,
-            str(_DEMO_DIR / "build_powerbi_export.py"),
+            rw_exe, "build",
             "--workbook", str(source_template),
             "--output", str(generated_workbook),
         ],
@@ -54,11 +54,11 @@ def test_readiness_full_pipeline(tmp_path):
         cwd=str(_REPO_ROOT),
     )
     assert gen_result.returncode == 0, (
-        f"build_powerbi_export.py exited with {gen_result.returncode}\n"
+        f"readiness-workbook build exited with {gen_result.returncode}\n"
         f"--- stdout ---\n{gen_result.stdout}\n"
         f"--- stderr ---\n{gen_result.stderr}"
     )
-    assert generated_workbook.exists(), "Generator did not create output workbook"
+    assert generated_workbook.exists(), "readiness-workbook build did not create output workbook"
 
     # Step 2: run full pipeline on generated workbook
     input_file = generated_workbook

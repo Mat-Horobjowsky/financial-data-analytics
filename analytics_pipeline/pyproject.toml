@@ -25,6 +25,7 @@ dev = [
     "report_engine @ file:../report_engine",
     "analytics_store @ file:../analytics_store",
     "visuals_engine @ file:../visuals_engine",
+    "readiness_workbook @ file:../readiness_workbook",
 ]
 
 [project.scripts]

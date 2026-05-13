@@ -258,6 +258,129 @@ def build_readiness_recommendations(data: ReportData) -> list[dict]:
     return recs
 
 
+def build_readiness_assessment(data: ReportData) -> dict:
+    """Deterministic executive assessment derived from readiness snapshot and segment data.
+
+    Derives posture label, summary sentence, weakest-category note, and transaction
+    posture using the same thresholds as build_readiness_recommendations (<60 = hold,
+    >=80 + no crits = advance).
+
+    Returns keys: posture, summary, weakness_note, transaction_posture,
+    overall_pct, gap_count, crit_count, weakest_category, weakest_pct.
+    """
+    overall = {r["metric_id"]: r for r in snapshot_rows(data)}
+
+    overall_pct: float | None = None
+    comp_row = overall.get("readiness_completion_pct")
+    if comp_row is not None:
+        try:
+            overall_pct = float(comp_row["value"])
+        except (ValueError, TypeError):
+            pass
+
+    gap_count: int | None = None
+    gap_row = overall.get("open_gap_count")
+    if gap_row is not None:
+        try:
+            gap_count = int(float(gap_row["value"]))
+        except (ValueError, TypeError):
+            pass
+
+    crit_count: int | None = None
+    crit_row = overall.get("critical_item_count")
+    if crit_row is not None:
+        try:
+            crit_count = int(float(crit_row["value"]))
+        except (ValueError, TypeError):
+            pass
+
+    # Weakest category by completion pct
+    cat_data = readiness_segment_data(data, "date_category", "category")
+    weakest_category: str | None = None
+    weakest_pct: float | None = None
+    if cat_data:
+        pct_segs = [
+            (r["segment"], float(r["readiness_completion_pct"]))
+            for r in cat_data
+            if r.get("readiness_completion_pct") is not None
+        ]
+        if pct_segs:
+            pct_segs.sort(key=lambda x: (x[1], x[0]))
+            weakest_category, weakest_pct = pct_segs[0]
+
+    # Posture label — aligned with recommendation thresholds
+    if crit_count is not None and crit_count > 0:
+        posture = "Not RFP-Ready" if (overall_pct is None or overall_pct < 60) else "At Risk"
+    elif overall_pct is None:
+        posture = "Insufficient Data"
+    elif overall_pct >= 80:
+        posture = "RFP-Ready"
+    elif overall_pct >= 60:
+        posture = "Progressing"
+    else:
+        posture = "Not RFP-Ready"
+
+    # One-sentence summary of key metrics
+    detail_parts: list[str] = []
+    if gap_count is not None:
+        detail_parts.append(f"{gap_count} open gap{'s' if gap_count != 1 else ''}")
+    if crit_count is not None:
+        detail_parts.append(
+            f"{crit_count} critical item{'s' if crit_count != 1 else ''} unresolved"
+        )
+    if overall_pct is not None:
+        detail_str = (", with " + " and ".join(detail_parts)) if detail_parts else ""
+        summary = (
+            f"This readiness snapshot shows "
+            f"{format_metric_value(overall_pct, '%')} completion{detail_str}."
+        )
+    elif detail_parts:
+        summary = f"Current data shows {' and '.join(detail_parts)}."
+    else:
+        summary = "Readiness data is insufficient for assessment."
+
+    # Weakest-category weakness note
+    weakness_note: str | None = None
+    if weakest_category is not None and weakest_pct is not None:
+        weak_label = weakest_category.replace("_", " ").title()
+        weakness_note = (
+            f"The most material weakness is {weak_label} readiness "
+            f"({format_metric_value(weakest_pct, '%')} completion)."
+        )
+
+    # Transaction posture — same thresholds as build_readiness_recommendations
+    if overall_pct is not None and overall_pct < 60:
+        transaction_posture = (
+            "Hold transaction and RFP outreach until overall readiness improves."
+        )
+    elif crit_count is not None and crit_count > 0:
+        transaction_posture = (
+            "Resolve critical blockers before advancing to external engagement."
+        )
+    elif overall_pct is not None and overall_pct >= 80:
+        transaction_posture = (
+            "Proceed — prepare market-facing materials and investor outreach packages."
+        )
+    elif overall_pct is not None:
+        transaction_posture = (
+            "Continue gap resolution to advance toward the RFP readiness threshold."
+        )
+    else:
+        transaction_posture = "Review readiness metrics to determine transaction posture."
+
+    return {
+        "posture": posture,
+        "summary": summary,
+        "weakness_note": weakness_note,
+        "transaction_posture": transaction_posture,
+        "overall_pct": overall_pct,
+        "gap_count": gap_count,
+        "crit_count": crit_count,
+        "weakest_category": weakest_category,
+        "weakest_pct": weakest_pct,
+    }
+
+
 def readiness_segment_data(data: ReportData, rollup: str, seg_col: str) -> list[dict]:
     """
     Latest segment-level readiness data for a given rollup level.

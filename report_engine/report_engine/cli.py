@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from report_engine import loader, templates
-from report_engine.html import render_html
+from report_engine.html import render_html, render_readiness_pdf_html
 from report_engine.insights import build_insights, has_period_data
 from report_engine.renderer import render_markdown
 
@@ -65,7 +65,16 @@ def cmd_build(args) -> None:
 
     if args.pdf:
         from report_engine.pdf import render_pdf
-        render_pdf(html_content, out / "report.pdf")
+        if args.template == "readiness_summary":
+            _pdf_title = (
+                args.title
+                if args.title
+                else Path(data.input_dir).name.replace("_", " ").title()
+            )
+            _pdf_html = render_readiness_pdf_html(data, title=_pdf_title)
+        else:
+            _pdf_html = html_content
+        render_pdf(_pdf_html, out / "report.pdf")
         generated_files.append("report.pdf")
 
     (out / "summary.json").write_text(
@@ -107,6 +116,16 @@ def main() -> None:
         action="store_true",
         default=False,
         help="Also generate report.pdf from the rendered HTML",
+    )
+    build_p.add_argument(
+        "--title",
+        default=None,
+        help=(
+            "Client or project name for the readiness PDF header "
+            "(e.g. 'NovaTech Systems'). Renders as: '<TITLE> — RFP Readiness Summary'. "
+            "Defaults to the input folder name when omitted. "
+            "Only used with --template readiness_summary --pdf."
+        ),
     )
 
     args = parser.parse_args()

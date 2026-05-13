@@ -55,6 +55,7 @@ pip install -e intake_engine \
             -e "report_engine[pdf]" \
             -e analytics_store \
             -e "visuals_engine[pdf]" \
+            -e readiness_workbook \
             -e analytics_pipeline
 ```
 
@@ -193,14 +194,15 @@ outputs/demo_readiness/
 
 > **Note:** The workbooks and CSVs in `examples/readiness_demo/` are excluded from the repo by a local `.gitignore` (private client artifacts). The Excel workflow below applies when you have a source workbook locally.
 
-The `build_powerbi_export.py` script pre-processes a multi-sheet client intake workbook — it resolves each requirement's status from the `Requirement_Map` and `Client_Export` sheets, writes a flat `PowerBI_Export` sheet into a new output workbook, and generates `client_context.csv` alongside it.
+The `readiness-workbook` CLI pre-processes a multi-sheet client intake workbook — it resolves each requirement's status from the `Requirement_Map` and `Client_Export` sheets, writes a flat `PowerBI_Export` sheet into a new output workbook, and generates `client_context.csv` alongside it.
 
 **Step 1 — Generate the export workbook and client context:**
 
 ```bash
-python examples/readiness_demo/build_powerbi_export.py \
+readiness-workbook build \
   --workbook examples/readiness_demo/client_intake_template.xlsx \
   --output examples/readiness_demo/client_intake_template_demo.xlsx \
+  --client-context-output examples/readiness_demo/client_context.csv \
   --demo-context
 ```
 
@@ -613,7 +615,7 @@ Active development is focused on `intake_engine/`, `metrics_engine/`, `report_en
 - **Readiness demo prototype** — fictional client intake workbook (`NovaTech Systems / NVT-2025-NAM`); `PowerBI_Export` sheet with flat requirement-per-row schema; Intake Engine `--sheet` flag selects the named sheet; two-step Intake → Pipeline workflow validated end-to-end
 - **Visuals Engine — dashboard polish** — configurable `title`, `subtitle`, `kpi_labels`, `kpi_descriptions`, and `category_labels` in YAML spec; client-friendly footer; human-readable KPI and category labels without code changes
 - **Power BI Export stage** — `--with-powerbi-export` flag adds a sixth pipeline stage; exports five flat CSVs (`readiness_kpis`, `readiness_by_category`, `readiness_by_market`, `validation_summary`, `metric_dictionary`) for a reusable Power BI template; `--client-context` flag copies project metadata CSV into the export directory
-- **Deterministic demo context generation** — `build_powerbi_export.py` pre-processes a multi-sheet client intake workbook into a flat `PowerBI_Export` sheet and writes `client_context.csv` alongside it; all demo context values are deterministic and reproducible
+- **Readiness workbook builder** (`readiness_workbook/`) — `readiness-workbook build` pre-processes a multi-sheet client intake workbook into a flat `PowerBI_Export` sheet and writes `client_context.csv` alongside it; all demo context values are deterministic and reproducible
 - **Report Engine PDF Export** — `--pdf` flag on `report-engine build` generates `report.pdf` from the rendered HTML; `xhtml2pdf` optional dependency; fails clearly if library is not installed
 - **Report Engine readiness template** — `--template readiness_summary` renders client-facing readiness sections (Readiness Snapshot, Open Gaps, Critical Items, Readiness by Segment, Recommended Next Steps); detects `date_category`/`date_market` rollup rows for segment breakdowns; falls back gracefully on generic data
 - **Report Engine — deterministic readiness recommendations** — Recommended Next Steps section generates category-specific, prioritised recommendations from `readiness_completion_pct`, `open_gap_count`, `critical_item_count`, and segment data; rules include critical-blocker escalation, highest-gap and lowest-completion category callouts, RFP hold threshold (< 60%), and market-ready proceed signal (≥ 80%, zero criticals); logic lives in `insights.py` and is shared by both Markdown and HTML renderers

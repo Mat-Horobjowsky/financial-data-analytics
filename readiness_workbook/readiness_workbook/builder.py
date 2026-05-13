@@ -1,25 +1,17 @@
 """
-Build PowerBI_Export sheet from Requirement_Map + Client_Export.
+Readiness workbook builder.
 
-Reads the source workbook, resolves each requirement's status from intake
-fields (or defaults), and writes static values into PowerBI_Export in a new
-output workbook.  The source workbook is never modified by default.
+Reads Requirement_Map + Client_Export sheets from a client intake workbook,
+resolves each requirement's status from intake field answers, and produces:
+  - a flat PowerBI_Export sheet (one row per requirement)
+  - a client_context.csv sidecar (project metadata for downstream Power BI template)
 
-Also writes client_context.csv alongside the output workbook so the Power BI
-template can display dynamic client/project context.
-
-Usage:
-    python examples/readiness_demo/build_powerbi_export.py \
-        --workbook examples/readiness_demo/client_intake_template.xlsx \
-        --output examples/readiness_demo/client_intake_template_generated.xlsx
+The source workbook is never modified unless --in-place is passed to the CLI.
 """
 
 from __future__ import annotations
 
-import argparse
 import csv
-import shutil
-import sys
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -75,48 +67,6 @@ CLIENT_CONTEXT_COLUMNS = [
     "key_decision_question",
 ]
 
-# Keys whose values are formatted as ISO dates in client_context.csv.
-_DATE_KEYS: frozenset[str] = frozenset(
-    {"assessment_date", "target_decision_date", "target_live_date", "prepared_date"}
-)
-
-# Deterministic date used for all demo-context outputs.
-DEMO_CONTEXT_DATE = date(2025, 1, 1)
-
-DEMO_CLIENT_VALUES: dict[str, Any] = {
-    "client_name": "Demo AI Infrastructure Co.",
-    "project_name": "Midwest AI Campus Requirement",
-    "project_id": "DEMO-READY-001",
-    "project_type": "AI training campus",
-    "buyer_profile": "Occupier",
-    "target_market": "Midwest",
-    "target_region": "Missouri / Central US",
-    "target_capacity_mw": 250,
-    "target_rack_density_kw": 50,
-    "target_live_date": date(2027, 12, 31),
-    "readiness_stage": "Pre-RFP / requirement definition",
-    "primary_use_case": "Large-scale AI training and inference",
-    "prepared_for": "Internal investment committee",
-    "prepared_by": "Financial Data Analytics prototype",
-    "prepared_date": DEMO_CONTEXT_DATE,
-    "version": "v0.1 demo",
-    "confidentiality": "Demo only",
-    "executive_summary": (
-        "Demo project used to evaluate whether a data center requirement "
-        "is ready to transact."
-    ),
-    "key_decision_question": (
-        "Is this project sufficiently defined to enter an RFP or "
-        "broker-led market process?"
-    ),
-    # Map to existing intake-linked fields so PowerBI_Export reflects demo state.
-    "assessment_date": DEMO_CONTEXT_DATE,
-    "use_case": "Large-scale AI training and inference",
-    "project_stage": "Pre-RFP / requirement definition",
-    "preferred_markets": "Midwest",
-    "initial_critical_it_mw": 250,
-}
-
 REQUIREMENT_MAP_COLUMNS = [
     "requirement_id",
     "requirement_name",
@@ -131,7 +81,12 @@ REQUIREMENT_MAP_COLUMNS = [
     "market_scope",
 ]
 
-# Excel serial date base (day 1 = 1900-01-01, but Excel uses 1899-12-30 as epoch)
+# Keys whose values are formatted as ISO dates in client_context.csv.
+_DATE_KEYS: frozenset[str] = frozenset(
+    {"assessment_date", "target_decision_date", "target_live_date", "prepared_date"}
+)
+
+# Excel serial date base (Excel uses 1899-12-30 as epoch).
 _EXCEL_EPOCH = date(1899, 12, 30)
 
 
@@ -157,10 +112,10 @@ def _from_excel_date(value: Any) -> date | None:
 def normalize_answer(value: Any) -> str:
     """Return 'yes', 'no', 'partial', or 'blank' for a raw cell value.
 
-    yes   → yes / y / true / complete / closed / done / 1
-    no    → no / n / false / open / not_started / not started
+    yes     → yes / y / true / complete / closed / done / 1
+    no      → no / n / false / open / not_started / not started
     partial → partial / in progress / in_progress
-    blank → None / "" / 0 / none / n/a / na
+    blank   → None / "" / 0 / none / n/a / na
     Any other non-empty string → 'yes' (field has content = answered)
     """
     if value is None:
@@ -181,8 +136,8 @@ def resolve_status(req: dict, intake_value: Any) -> tuple[str, str]:
     """Return (status, notes) for a Requirement_Map row given a raw intake value.
 
     If intake_field is blank, returns (default_status, default_notes).
-    Otherwise normalizes the intake_value and maps to the corresponding
-    answer_*_status field; falls back to default_status on blank/unknown.
+    Otherwise normalizes intake_value and maps to the corresponding answer_*_status
+    field; falls back to default_status on blank/unknown.
     """
     intake_field = (req.get("intake_field") or "").strip()
     default_status = req.get("default_status") or "open"
@@ -250,18 +205,15 @@ def build_powerbi_export(workbook_path: Path) -> list[dict]:
     if not requirements:
         raise ValueError("Requirement_Map has no data rows")
 
-    # Resolve date (fallback: today)
     raw_date = client.get("assessment_date")
     row_date = _from_excel_date(raw_date) or date.today()
 
-    # Resolve project_id (fallback: "UNKNOWN")
     project_id = client.get("project_id")
     if not project_id or project_id == 0:
         project_id = "UNKNOWN"
     else:
         project_id = str(project_id).strip()
 
-    # Resolve single-market override from Client_Export
     client_market_raw = client.get("preferred_markets")
     if client_market_raw and str(client_market_raw).strip() and "," not in str(client_market_raw):
         client_market = str(client_market_raw).strip()
@@ -301,7 +253,7 @@ def build_powerbi_export(workbook_path: Path) -> list[dict]:
 def write_powerbi_export(output_path: Path, rows: list[dict]) -> None:
     """Write generated rows into the PowerBI_Export sheet of output_path.
 
-    Clears all data rows (keeping header), then appends the new rows.
+    Clears all data rows (keeping header), then appends new rows.
     """
     wb = openpyxl.load_workbook(str(output_path))
 
@@ -317,17 +269,6 @@ def write_powerbi_export(output_path: Path, rows: list[dict]) -> None:
         ws.append([row[col] for col in POWERBI_EXPORT_COLUMNS])
 
     wb.save(str(output_path))
-
-
-def apply_demo_context(client: dict) -> dict:
-    """Return a new client dict with demo metadata merged over the source client values.
-
-    All keys from the source client are preserved so Requirement_Map intake_field
-    references continue to resolve.  Demo values take precedence for fields they define.
-    """
-    merged = dict(client)
-    merged.update(DEMO_CLIENT_VALUES)
-    return merged
 
 
 def write_client_export_sheet(output_path: Path, client: dict) -> None:
@@ -368,99 +309,3 @@ def write_client_context(client: dict, output_path: Path) -> None:
         writer = csv.DictWriter(f, fieldnames=CLIENT_CONTEXT_COLUMNS)
         writer.writeheader()
         writer.writerow(row)
-
-
-def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Generate PowerBI_Export from Requirement_Map + Client_Export",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog=__doc__,
-    )
-    parser.add_argument("--workbook", required=True, help="Source workbook (.xlsx)")
-    parser.add_argument(
-        "--output",
-        required=True,
-        help="Output workbook path (new file; source is never modified by default)",
-    )
-    parser.add_argument(
-        "--in-place",
-        action="store_true",
-        help="Overwrite source workbook in place (unsafe; use with caution)",
-    )
-    parser.add_argument(
-        "--client-context-output",
-        dest="client_context_output",
-        default=None,
-        help=(
-            "Path for the client_context.csv sidecar "
-            "(default: client_context.csv in the same directory as --output)"
-        ),
-    )
-    parser.add_argument(
-        "--demo-context",
-        action="store_true",
-        help=(
-            "Enrich the generated workbook's Client_Export with realistic demo metadata "
-            "and generate a richer client_context.csv.  Source workbook is never modified."
-        ),
-    )
-    args = parser.parse_args()
-
-    workbook_path = Path(args.workbook)
-    if not workbook_path.exists():
-        print(f"Error: workbook not found: {workbook_path}", file=sys.stderr)
-        sys.exit(1)
-
-    output_path = Path(args.output)
-
-    if args.in_place:
-        output_path = workbook_path
-    else:
-        if output_path.resolve() == workbook_path.resolve():
-            print(
-                "Error: --output is the same path as --workbook. "
-                "Use --in-place to overwrite the source.",
-                file=sys.stderr,
-            )
-            sys.exit(1)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(str(workbook_path), str(output_path))
-
-    context_path = (
-        Path(args.client_context_output)
-        if args.client_context_output
-        else output_path.parent / "client_context.csv"
-    )
-
-    if args.demo_context:
-        try:
-            wb_src = openpyxl.load_workbook(str(workbook_path), data_only=True)
-            src_client = _read_client_export(wb_src)
-            demo_client = apply_demo_context(src_client)
-            # Write enriched Client_Export to output; source is never touched.
-            write_client_export_sheet(output_path, demo_client)
-            # Build PowerBI_Export from output (now has demo client data).
-            rows = build_powerbi_export(output_path)
-        except ValueError as e:
-            print(f"Error: {e}", file=sys.stderr)
-            sys.exit(1)
-        write_powerbi_export(output_path, rows)
-        write_client_context(demo_client, context_path)
-    else:
-        try:
-            rows = build_powerbi_export(workbook_path)
-            wb = openpyxl.load_workbook(str(workbook_path), data_only=True)
-            client = _read_client_export(wb)
-        except ValueError as e:
-            print(f"Error: {e}", file=sys.stderr)
-            sys.exit(1)
-        write_powerbi_export(output_path, rows)
-        write_client_context(client, context_path)
-
-    print(f"Generated {len(rows)} rows in PowerBI_Export")
-    print(f"Output:         {output_path}")
-    print(f"Client context: {context_path}")
-
-
-if __name__ == "__main__":
-    main()
