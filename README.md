@@ -1,5 +1,7 @@
 # Financial Data Analytics
 
+[![CI](https://github.com/Mat-Horobjowsky/financial-data-analytics/actions/workflows/ci.yml/badge.svg)](https://github.com/Mat-Horobjowsky/financial-data-analytics/actions/workflows/ci.yml)
+
 A modular analytics engineering portfolio focused on turning raw data into decision-ready intelligence.
 
 This repository documents my progression from analyst workflows to reusable analytics systems — combining data ingestion, metric governance, reporting automation, and AI-assisted development workflows.

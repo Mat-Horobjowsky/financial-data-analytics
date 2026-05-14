@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: Full Test Suite
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip
+
+      - name: Install packages
+        run: |
+          pip install -e intake_engine \
+                      -e metrics_engine \
+                      -e "report_engine[pdf]" \
+                      -e analytics_store \
+                      -e "visuals_engine[pdf]" \
+                      -e readiness_workbook \
+                      -e analytics_pipeline
+
+      - name: Run test suite
+        run: python -m pytest
+
+  integration:
+    name: Readiness Integration Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip
+
+      - name: Install packages
+        run: |
+          pip install -e intake_engine \
+                      -e metrics_engine \
+                      -e "report_engine[pdf]" \
+                      -e analytics_store \
+                      -e "visuals_engine[pdf]" \
+                      -e readiness_workbook \
+                      -e analytics_pipeline
+
+      - name: Run readiness integration test
+        env:
+          ANALYTICS_PIPELINE_INTEGRATION_TESTS: "1"
+        run: |
+          python -m pytest analytics_pipeline/tests/analytics_pipeline/test_integration_readiness.py -v
