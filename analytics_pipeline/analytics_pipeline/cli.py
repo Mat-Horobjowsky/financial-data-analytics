@@ -7,6 +7,7 @@ from pathlib import Path
 from report_engine.templates import DEFAULT_TEMPLATE, VALID_TEMPLATES
 
 from .manifest import build_artifact_manifest, write_artifact_manifest
+from .package import build_client_package
 from .runner import run_pipeline
 from .stages import StageContext
 from .summary import build_pipeline_summary, write_summary
@@ -48,6 +49,7 @@ def cmd_run(args) -> None:
         with_pdf=args.pdf,
         report_title=args.report_title,
     )
+    with_client_package = args.client_package
 
     results = run_pipeline(ctx)
     summary = build_pipeline_summary(ctx, results)
@@ -60,6 +62,14 @@ def cmd_run(args) -> None:
         )
         manifest_path = write_artifact_manifest(manifest, ctx.output_root)
         print(f"artifact_manifest.json -> {manifest_path}")
+
+        if with_client_package:
+            pkg = build_client_package(manifest, ctx.output_root)
+            pkg_dir = pkg["package_dir"]
+            print(f"client_package/        -> {pkg_dir}")
+            if pkg["missing"]:
+                for m in pkg["missing"]:
+                    print(f"  warning: missing artifact skipped: {m['relative_path']}")
 
     for name, stage_data in summary["stages"].items():
         print(f"  {name}: {stage_data['status']}")
@@ -154,6 +164,19 @@ def main() -> None:
             "Title forwarded to Report Engine --title; used as the PDF report header. "
             "Defaults to the input folder name when omitted. "
             "Recommended with --template readiness_summary --pdf."
+        ),
+    )
+    run_p.add_argument(
+        "--client-package",
+        dest="client_package",
+        action="store_true",
+        default=False,
+        help=(
+            "Assemble a client delivery package after a successful run. "
+            "Creates client_package/ inside the output directory containing "
+            "client-facing and BI-facing artifacts with client-friendly names, "
+            "a README.md, and a package_manifest.json. Requires --with-visuals "
+            "and --with-powerbi-export for a complete package."
         ),
     )
 
