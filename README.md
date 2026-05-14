@@ -16,7 +16,7 @@ Clean data → Trusted metrics → Visuals anywhere
 
 | Engine | Version | Input | Output |
 |---|---|---|---|
-| **Intake Engine** | v1.x | Raw CSV / XLSX (messy, unstructured) | Clean CSV, HTML quality report, validation JSON, profiling JSON |
+| **Intake Engine** | v1.x | Raw CSV / XLSX (messy, unstructured) | Clean CSV, HTML quality report, validation JSON |
 | **Metrics Engine** | v0.1 | Clean CSV | Long + wide KPI tables, metric dictionary, validation report, Excel workbook; alternate metric packs via `--config` / `--schema` |
 | **Report Engine** | v1.4 | Metrics Engine output directory | Markdown + HTML reports, summary JSON, insights JSON; optional PDF via `--pdf` |
 | **Analytics Store** | v0.1 | Metrics Engine output + Report Engine output (optional) | `analytics.duckdb` — 6 tables, 3 views |
@@ -45,17 +45,17 @@ Power BI Export        (--with-powerbi-export)
 
 The full demo workflow — including PDF generation — has been validated on **Python 3.12**.
 
-```bash
+```powershell
 py -3.12 -m venv .venv
-.venv\Scripts\activate          # Windows
-# source .venv/bin/activate     # macOS / Linux
+.venv\Scripts\Activate.ps1      # PowerShell (Windows)
+# source .venv/bin/activate     # bash (macOS / Linux)
 
-pip install -e intake_engine \
-            -e metrics_engine \
-            -e "report_engine[pdf]" \
-            -e analytics_store \
-            -e "visuals_engine[pdf]" \
-            -e readiness_workbook \
+pip install -e intake_engine `
+            -e metrics_engine `
+            -e "report_engine[pdf]" `
+            -e analytics_store `
+            -e "visuals_engine[pdf]" `
+            -e readiness_workbook `
             -e analytics_pipeline
 ```
 
@@ -161,13 +161,13 @@ The Analytics Pipeline supports alternate metric packs via `--metrics-config` an
 
 The sample readiness dataset is committed at `metrics_engine/data/sample_readiness.csv`. This command runs immediately after cloning:
 
-```bash
-analytics-pipeline run \
-  --input metrics_engine/data/sample_readiness.csv \
-  --output outputs/demo_readiness \
-  --metrics-config metrics_engine/config/readiness_metrics.yaml \
-  --schema-config metrics_engine/config/readiness_schema.yaml \
-  --with-visuals \
+```powershell
+analytics-pipeline run `
+  --input metrics_engine/data/sample_readiness.csv `
+  --output outputs/demo_readiness `
+  --metrics-config metrics_engine/config/readiness_metrics.yaml `
+  --schema-config metrics_engine/config/readiness_schema.yaml `
+  --with-visuals `
   --with-powerbi-export
 ```
 
@@ -193,17 +193,17 @@ outputs/demo_readiness/
 
 ### Excel workbook path — for client files
 
-> **Note:** The workbooks and CSVs in `examples/readiness_demo/` are excluded from the repo by a local `.gitignore` (private client artifacts). The Excel workflow below applies when you have a source workbook locally.
+> **Note:** The source template `examples/readiness_demo/client_intake_template.xlsx` is committed to the repo. Step 1 generates `client_intake_template_demo.xlsx` and `client_context.csv` as local-only outputs (excluded by `.gitignore`).
 
 The `readiness-workbook` CLI pre-processes a multi-sheet client intake workbook — it resolves each requirement's status from the `Requirement_Map` and `Client_Export` sheets, writes a flat `PowerBI_Export` sheet into a new output workbook, and generates `client_context.csv` alongside it.
 
 **Step 1 — Generate the export workbook and client context:**
 
-```bash
-readiness-workbook build \
-  --workbook examples/readiness_demo/client_intake_template.xlsx \
-  --output examples/readiness_demo/client_intake_template_demo.xlsx \
-  --client-context-output examples/readiness_demo/client_context.csv \
+```powershell
+readiness-workbook build `
+  --workbook examples/readiness_demo/client_intake_template.xlsx `
+  --output examples/readiness_demo/client_intake_template_demo.xlsx `
+  --client-context-output examples/readiness_demo/client_context.csv `
   --demo-context
 ```
 
@@ -213,19 +213,19 @@ This writes two files (both ignored by `.gitignore` — local only):
 
 **Step 2 — Run the full pipeline from the Excel sheet:**
 
-```bash
-analytics-pipeline run \
-  --input examples/readiness_demo/client_intake_template_demo.xlsx \
-  --sheet PowerBI_Export \
-  --output outputs/demo_readiness_client \
-  --metrics-config metrics_engine/config/readiness_metrics.yaml \
-  --schema-config metrics_engine/config/readiness_schema.yaml \
-  --template readiness_summary \
-  --pdf \
-  --report-title "Demo AI Infrastructure Co." \
-  --with-visuals \
-  --with-powerbi-export \
-  --client-context examples/readiness_demo/client_context.csv \
+```powershell
+analytics-pipeline run `
+  --input examples/readiness_demo/client_intake_template_demo.xlsx `
+  --sheet PowerBI_Export `
+  --output outputs/demo_readiness_client `
+  --metrics-config metrics_engine/config/readiness_metrics.yaml `
+  --schema-config metrics_engine/config/readiness_schema.yaml `
+  --template readiness_summary `
+  --pdf `
+  --report-title "Demo AI Infrastructure Co." `
+  --with-visuals `
+  --with-powerbi-export `
+  --client-context examples/readiness_demo/client_context.csv `
   --client-package
 ```
 
@@ -449,7 +449,7 @@ analytics-pipeline run \
 
 ```
 <output>/
-├── intake/          # Clean CSV, HTML quality report, validation JSON, profiling JSON
+├── intake/          # Clean CSV, HTML quality report, validation JSON
 ├── metrics/         # Long/wide metrics, metric dictionary, validation report, Excel workbook
 ├── report/          # report.html, report.md, summary.json, insights.json
 ├── store/           # analytics.duckdb — created when --with-store is passed

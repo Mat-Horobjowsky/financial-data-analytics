@@ -1,7 +1,10 @@
-# Private workbooks and client files
+# Generated and client-specific demo artifacts — local only
 *.xlsx
 *.xlsm
 *.csv
+
+# The canonical blank source template is committed to the repo
+!client_intake_template.xlsx
 
 # Python cache
 __pycache__/
