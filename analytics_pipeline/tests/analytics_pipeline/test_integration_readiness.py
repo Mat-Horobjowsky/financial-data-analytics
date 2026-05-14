@@ -42,12 +42,15 @@ def test_readiness_full_pipeline(tmp_path):
 
     # Step 1: generate PowerBI_Export rows from Requirement_Map + Client_Export
     generated_workbook = tmp_path / "client_intake_template_generated.xlsx"
+    generated_context = tmp_path / "client_context.csv"
     rw_exe = shutil.which("readiness-workbook") or "readiness-workbook"
     gen_result = subprocess.run(
         [
             rw_exe, "build",
             "--workbook", str(source_template),
             "--output", str(generated_workbook),
+            "--client-context-output", str(generated_context),
+            "--demo-context",
         ],
         capture_output=True,
         text=True,
@@ -59,12 +62,11 @@ def test_readiness_full_pipeline(tmp_path):
         f"--- stderr ---\n{gen_result.stderr}"
     )
     assert generated_workbook.exists(), "readiness-workbook build did not create output workbook"
+    assert generated_context.exists(), "readiness-workbook build did not create client_context.csv"
 
     # Step 2: run full pipeline on generated workbook
     input_file = generated_workbook
     out = tmp_path / "pipeline"
-
-    client_context = _DEMO_DIR / "client_context.csv"
 
     pipeline_exe = shutil.which("analytics-pipeline") or "analytics-pipeline"
     result = subprocess.run(
@@ -80,7 +82,7 @@ def test_readiness_full_pipeline(tmp_path):
             "--report-title", "Demo AI Infrastructure Co.",
             "--with-visuals",
             "--with-powerbi-export",
-            "--client-context", str(client_context),
+            "--client-context", str(generated_context),
         ],
         capture_output=True,
         text=True,
