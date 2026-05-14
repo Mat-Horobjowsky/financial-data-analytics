@@ -42,6 +42,7 @@ analytics-pipeline run \
 | `--schema-config` | `metrics_engine/config/schema.yaml` | Custom Metrics Engine schema YAML |
 | `--sheet` | *(none)* | Excel sheet name passed to Intake Engine (optional, for XLSX files with multiple sheets) |
 | `--client-context` | *(none)* | Path to `client_context.csv`; injects client name, project name, and project ID into the Visuals Engine dashboard header when `--with-visuals` is used, and copies the file into `powerbi/` when `--with-powerbi-export` is used |
+| `--client-package` | off | Assemble a `client_package/` delivery folder after a successful run. Copies `client_facing` artifacts (with client-friendly names) and `bi_facing` CSV exports to `powerbi/`; generates `README.md` and `package_manifest.json`. Recommended with `--with-visuals --with-powerbi-export --pdf`. |
 
 ## Usage examples
 
@@ -100,8 +101,11 @@ analytics-pipeline run \
   --report-title "Demo AI Infrastructure Co." \
   --with-visuals \
   --with-powerbi-export \
-  --client-context examples/readiness_demo/client_context.csv
+  --client-context examples/readiness_demo/client_context.csv \
+  --client-package
 ```
+
+Add `--client-package` to assemble a curated `client_package/` delivery folder alongside the full pipeline output (see [Output structure](#output-structure)).
 
 Produces `outputs/demo_readiness_client/report/report.pdf` (polished one-page landscape readiness executive report) and `report.html` (polished client-facing readiness page: dark header, KPI cards, Executive Assessment, Recommended Next Steps, segment tables — no generic Validation block or Metric Dictionary), `outputs/demo_readiness_client/visuals/readiness_dashboard.html` (with client/project identity injected in the header from `--client-context`), and `outputs/demo_readiness_client/powerbi/*.csv`.
 
@@ -126,7 +130,16 @@ Produces `outputs/demo_readiness_client/report/report.pdf` (polished one-page la
 │   ├── metric_dictionary.csv
 │   └── client_context.csv          # optional — copied when --client-context is provided
 ├── pipeline_summary.json
-└── artifact_manifest.json          # only created on full success; requires no extra flags
+├── artifact_manifest.json          # only created on full success; requires no extra flags
+└── client_package/                 # only created when --client-package is passed
+    ├── README.md                   # generated; client identity, deliverable table, BI handoff note
+    ├── package_manifest.json       # trimmed manifest: client_facing + bi_facing artifacts only
+    ├── executive_report.html       # renamed from report/report.html
+    ├── executive_report.pdf        # renamed from report/report.pdf
+    ├── readiness_dashboard.html    # copied from visuals/readiness_dashboard.html
+    ├── readiness_dashboard.pdf     # copied from visuals/readiness_dashboard.pdf
+    └── powerbi/
+        └── *.csv                   # all bi_facing Power BI exports (names unchanged)
 ```
 
 The CSV schema for the `powerbi/` output is a stable downstream contract. Column names, file names, grain, and data types must not change without updating `docs/powerbi_export_contract.md` and the contract validation tests in `tests/analytics_pipeline/test_powerbi_export_contract.py`.
@@ -217,6 +230,8 @@ Artifact audiences:
 
 Unrecognised files (category `unknown`) are included with audience `internal` rather than silently omitted. The `client` block is populated from `--client-context` when provided; it is `null` when no context is passed.
 
+`artifact_manifest.json` is the source of truth consumed by `--client-package`: all inclusion and renaming decisions for `client_package/` are driven by the `audience` field in the manifest rather than by hardcoded file lists.
+
 ## Prerequisites
 
 All engines are local editable packages — they cannot be declared as PyPI dependencies. Install the ones you need before running the pipeline:
@@ -257,7 +272,7 @@ This installs `analytics_pipeline` plus all five engine packages (declared as lo
 py -m pytest analytics_pipeline/tests/
 ```
 
-Expected: **214 passed, 1 skipped** (the env-gated integration test is skipped by default).
+Expected: **322 passed, 1 skipped** (the env-gated integration test is skipped by default).
 
 To run the end-to-end readiness integration test (slower, requires all engines installed):
 
@@ -291,4 +306,6 @@ Each stage runs only after the previous one succeeds. If any stage fails, later 
 | `stages.py` | Stage definitions — `StageContext`, `StageResult`, command builders, `ACTIVE_STAGES` |
 | `runner.py` | Executes stages sequentially, stops on first failure; runs optional store stage |
 | `summary.py` | Builds and writes `pipeline_summary.json` |
+| `manifest.py` | Classifies every generated file by audience; builds and writes `artifact_manifest.json` |
+| `package.py` | Assembles `client_package/` from manifest audience classifications; copies and renames artifacts; generates `README.md` and `package_manifest.json` |
 | `cli.py` | `analytics-pipeline run` entry point |

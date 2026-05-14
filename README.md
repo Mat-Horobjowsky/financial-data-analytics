@@ -21,7 +21,7 @@ Clean data → Trusted metrics → Visuals anywhere
 | **Report Engine** | v1.4 | Metrics Engine output directory | Markdown + HTML reports, summary JSON, insights JSON; optional PDF via `--pdf` |
 | **Analytics Store** | v0.1 | Metrics Engine output + Report Engine output (optional) | `analytics.duckdb` — 6 tables, 3 views |
 | **Visuals Engine** | v0.1 | `analytics.duckdb` | Self-contained HTML dashboard, `visuals_summary.json` |
-| **Analytics Pipeline** | v0.2 | Raw CSV / XLSX | All engine outputs + `pipeline_summary.json` + `artifact_manifest.json`; optional store, visuals, and Power BI export stages via `--with-store` / `--with-visuals` / `--with-powerbi-export`; named Excel sheet selection via `--sheet`; alternate metric configs via `--metrics-config` / `--schema-config` |
+| **Analytics Pipeline** | v0.2 | Raw CSV / XLSX | All engine outputs + `pipeline_summary.json` + `artifact_manifest.json`; optional store, visuals, and Power BI export stages via `--with-store` / `--with-visuals` / `--with-powerbi-export`; named Excel sheet selection via `--sheet`; alternate metric configs via `--metrics-config` / `--schema-config`; optional `client_package/` delivery folder via `--client-package` |
 
 Each engine is a standalone Python CLI package with tests, documented outputs, and a clearly scoped role in the pipeline.
 
@@ -225,12 +225,13 @@ analytics-pipeline run \
   --report-title "Demo AI Infrastructure Co." \
   --with-visuals \
   --with-powerbi-export \
-  --client-context examples/readiness_demo/client_context.csv
+  --client-context examples/readiness_demo/client_context.csv \
+  --client-package
 ```
 
 The `--sheet` flag passes the named Excel sheet directly to the Intake Engine. The `--template readiness_summary --pdf --report-title` flags generate the polished one-page landscape readiness executive PDF at `outputs/demo_readiness_client/report/report.pdf`; `report.html` renders as a polished client-facing readiness page with a dark header, KPI cards, Executive Assessment, and Recommended Next Steps. The `--client-context` flag injects client name, project name, and project ID as an identity line in the Visuals Engine dashboard header, copies `client_context.csv` into the `powerbi/` output directory, and populates the `client` block in both `pipeline_summary.json` and `artifact_manifest.json`.
 
-After a successful run, `artifact_manifest.json` is written alongside `pipeline_summary.json`. It classifies every generated file as `client_facing`, `bi_facing`, or `internal`, making the deliverable set legible at a glance without parsing the full output tree.
+After a successful run, `artifact_manifest.json` is written alongside `pipeline_summary.json`. It classifies every generated file as `client_facing`, `bi_facing`, or `internal`, making the deliverable set legible at a glance without parsing the full output tree. The `--client-package` flag consumes this manifest to assemble a curated `client_package/` delivery folder — the artifacts a client or BI team would actually receive, with client-friendly file names and a generated `README.md`.
 
 ### Dashboard output
 
@@ -440,6 +441,7 @@ analytics-pipeline run \
 | `--metrics-config` | `metrics_engine/config/metrics.yaml` | Custom Metrics Engine config YAML (enables alternate metric packs) |
 | `--schema-config` | `metrics_engine/config/schema.yaml` | Custom Metrics Engine schema YAML |
 | `--client-context` | *(none)* | Path to `client_context.csv`; injects client name, project name, and project ID into the Visuals Engine dashboard header when `--with-visuals` is used, and copies the file into `powerbi/` when `--with-powerbi-export` is used |
+| `--client-package` | off | Assemble a `client_package/` delivery folder after a successful run. Copies `client_facing` artifacts (with client-friendly names) and `bi_facing` CSV exports to `powerbi/`; generates `README.md` and `package_manifest.json`. Recommended with `--with-visuals --with-powerbi-export --pdf`. |
 
 `pipeline_summary.json` records all inputs, resolved config paths, and stage results so any run can be audited or replayed exactly.
 
@@ -462,7 +464,17 @@ analytics-pipeline run \
 │   ├── validation_summary.csv
 │   ├── metric_dictionary.csv
 │   └── client_context.csv          # optional — copied when --client-context is provided
-└── pipeline_summary.json
+├── pipeline_summary.json
+├── artifact_manifest.json          # classifies every output as client_facing / bi_facing / internal
+└── client_package/                 # client delivery folder — created when --client-package is passed
+    ├── README.md
+    ├── package_manifest.json
+    ├── executive_report.html
+    ├── executive_report.pdf
+    ├── readiness_dashboard.html
+    ├── readiness_dashboard.pdf
+    └── powerbi/
+        └── *.csv
 ```
 
 ### Pipeline Stages
@@ -632,6 +644,8 @@ Active development is focused on `intake_engine/`, `metrics_engine/`, `report_en
 - **Visuals Engine — client identity injection** — `--client-context` flag on `visuals-engine build` reads `client_name`, `project_name`, and `project_id` from `client_context.csv` and renders a client/project identity line in both HTML and PDF dashboard headers; YAML spec remains generic and reusable; forwarded automatically by `analytics-pipeline run --with-visuals --client-context`
 - **Report Engine — polished readiness HTML** — `--template readiness_summary` now produces a client-facing `report.html` with dark header, KPI cards, Executive Assessment, Recommended Next Steps, and segment tables; generic Validation block and Metric Dictionary removed from HTML output; PDF and Markdown outputs unchanged
 - **Visuals Engine — dashboard footer polish** — readiness dashboard HTML footer displays source and generation metadata only; validation warning counts removed from the client-facing footer
+- **Artifact Manifest v1** — `artifact_manifest.json` emitted on every full-success pipeline run; classifies all 23 generated artifacts as `client_facing`, `bi_facing`, or `internal`; includes client identity block from `--client-context`; source of truth for downstream delivery steps
+- **Client Package v1** — `--client-package` flag on `analytics-pipeline run`; assembles a curated `client_package/` delivery folder from manifest audience classifications; copies client-facing artifacts with client-friendly names (`executive_report.html`, etc.) and BI-facing CSVs to `powerbi/`; generates `README.md` with client identity and deliverable table, and a trimmed `package_manifest.json`; gracefully handles missing artifacts; zero impact on runs without the flag
 
 ### Next Priorities
 
