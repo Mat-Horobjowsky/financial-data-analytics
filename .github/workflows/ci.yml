@@ -39,7 +39,14 @@ jobs:
         run: python -m pip install pytest
 
       - name: Run test suite
-        run: python -m pytest
+        run: |
+          python -m pytest intake_engine/tests -q
+          python -m pytest metrics_engine/tests -q
+          python -m pytest report_engine/tests -q
+          python -m pytest analytics_store/tests -q
+          python -m pytest visuals_engine/tests -q
+          python -m pytest readiness_workbook/tests -q
+          python -m pytest analytics_pipeline/tests -q
 
   integration:
     name: Readiness Integration Test
