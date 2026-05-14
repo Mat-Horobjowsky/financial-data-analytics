@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import shutil
+from datetime import datetime, timezone
 from pathlib import Path
 
 # Canonical rename map: manifest relative_path → package filename.
@@ -13,8 +14,28 @@ _RENAME: dict[str, str] = {
     "visuals/readiness_dashboard.pdf": "readiness_dashboard.pdf",
 }
 
+# Human-readable descriptions for primary deliverable files.
+_DESCRIPTIONS: dict[str, str] = {
+    "executive_report.html": "Browser-ready executive readiness summary",
+    "executive_report.pdf": "Print-ready executive readiness brief",
+    "readiness_dashboard.html": "Interactive browser dashboard of readiness KPIs and gaps",
+    "readiness_dashboard.pdf": "Print-ready dashboard snapshot",
+}
+
 _PACKAGE_DIR_NAME = "client_package"
 _PACKAGED_AUDIENCES = {"client_facing", "bi_facing"}
+
+
+def _format_generated_at(ts: str) -> str:
+    """Format ISO 8601 timestamp to deterministic human-readable UTC string."""
+    if not ts:
+        return ts
+    try:
+        dt = datetime.fromisoformat(ts)
+        dt_utc = dt.astimezone(timezone.utc)
+        return dt_utc.strftime("%Y-%m-%d %H:%M UTC")
+    except (ValueError, AttributeError):
+        return ts
 
 
 def _package_path(artifact: dict) -> str:
@@ -95,13 +116,27 @@ def _write_readme(
     client_name = client.get("client_name") or "Client"
     project_name = client.get("project_name") or ""
     project_id = client.get("project_id") or ""
-    generated_at = manifest.get("generated_at", "")
+    generated_at = _format_generated_at(manifest.get("generated_at", ""))
     pipeline_version = manifest.get("pipeline_version", "")
 
-    table_rows = "\n".join(
-        f"| `{e['package_path']}` | {e['name']} |"
-        for e in copied
-    ) if copied else "| _(none)_ | |"
+    primary = [e for e in copied if not e["package_path"].startswith("powerbi/")]
+    powerbi_files = [e for e in copied if e["package_path"].startswith("powerbi/")]
+
+    primary_rows = (
+        "\n".join(
+            f"| `{e['package_path']}` | {_DESCRIPTIONS.get(e['package_path'], e['name'])} |"
+            for e in primary
+        )
+        if primary else "| _(none)_ | |"
+    )
+
+    powerbi_rows = (
+        "\n".join(
+            f"| `{e['package_path']}` | {e['name']} |"
+            for e in powerbi_files
+        )
+        if powerbi_files else "| _(none)_ | |"
+    )
 
     missing_section = ""
     if missing:
@@ -127,14 +162,17 @@ def _write_readme(
         "single validated pipeline run.\n\n"
         "Internal pipeline files (raw metrics, DuckDB store, validation logs, Markdown\n"
         "source) are not included in this package.\n\n"
-        "## Deliverables\n\n"
+        "## Primary Deliverables\n\n"
         "| File | Description |\n"
         "|------|-------------|\n"
-        f"{table_rows}\n\n"
-        "## Power BI Handoff\n\n"
+        f"{primary_rows}\n\n"
+        "## Power BI Handoff Files\n\n"
         "The `powerbi/` folder contains CSV exports ready for the Power BI readiness\n"
         "dashboard template. Load all CSV files as data sources in the template.\n"
-        "Do not rename the files; the template references them by name.\n"
+        "Do not rename the files; the template references them by name.\n\n"
+        "| File | Description |\n"
+        "|------|-------------|\n"
+        f"{powerbi_rows}\n"
         f"{missing_section}"
     )
 

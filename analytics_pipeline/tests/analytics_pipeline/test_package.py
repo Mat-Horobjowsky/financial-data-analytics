@@ -242,6 +242,59 @@ def test_readme_falls_back_gracefully_when_no_client_block(tmp_path):
     assert "README" not in text or True  # just checking it doesn't raise
 
 
+def test_readme_timestamp_is_human_readable(tmp_path):
+    manifest = _make_manifest()
+    _create_source_files(tmp_path, manifest)
+    build_client_package(manifest, tmp_path)
+    text = (tmp_path / "client_package" / "README.md").read_text(encoding="utf-8")
+    # _TS = "2026-05-13T20:00:00+00:00" → "2026-05-13 20:00 UTC"
+    assert "2026-05-13 20:00 UTC" in text
+    # Raw ISO format (date T time) must not appear on the Generated line
+    generated_line = text.split("**Generated:**")[1].split("\n")[0]
+    assert "T20:" not in generated_line
+
+
+def test_readme_has_primary_deliverables_section(tmp_path):
+    manifest = _make_manifest()
+    _create_source_files(tmp_path, manifest)
+    build_client_package(manifest, tmp_path)
+    text = (tmp_path / "client_package" / "README.md").read_text(encoding="utf-8")
+    assert "## Primary Deliverables" in text
+
+
+def test_readme_has_powerbi_handoff_files_section(tmp_path):
+    manifest = _make_manifest()
+    _create_source_files(tmp_path, manifest)
+    build_client_package(manifest, tmp_path)
+    text = (tmp_path / "client_package" / "README.md").read_text(encoding="utf-8")
+    assert "## Power BI Handoff Files" in text
+
+
+def test_readme_primary_deliverable_descriptions_are_informative(tmp_path):
+    manifest = _make_manifest()
+    _create_source_files(tmp_path, manifest)
+    build_client_package(manifest, tmp_path)
+    text = (tmp_path / "client_package" / "README.md").read_text(encoding="utf-8")
+    assert "Browser-ready executive readiness summary" in text
+    assert "Print-ready executive readiness brief" in text
+    assert "Interactive browser dashboard of readiness KPIs and gaps" in text
+    assert "Print-ready dashboard snapshot" in text
+
+
+def test_readme_primary_and_powerbi_sections_are_separate(tmp_path):
+    manifest = _make_manifest()
+    _create_source_files(tmp_path, manifest)
+    build_client_package(manifest, tmp_path)
+    text = (tmp_path / "client_package" / "README.md").read_text(encoding="utf-8")
+    primary_pos = text.index("## Primary Deliverables")
+    powerbi_pos = text.index("## Power BI Handoff Files")
+    # Primary section comes before Power BI section
+    assert primary_pos < powerbi_pos
+    # CSV files appear after the Power BI heading, not before it
+    csv_pos = text.index("powerbi/readiness_kpis.csv")
+    assert csv_pos > powerbi_pos
+
+
 # ---------------------------------------------------------------------------
 # package_manifest.json
 # ---------------------------------------------------------------------------
