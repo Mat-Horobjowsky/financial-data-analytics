@@ -39,6 +39,13 @@ The canonical demo produces polished, client-facing readiness deliverables from 
 ![Transaction Readiness Dashboard preview](docs/assets/readiness_toolkit/transaction_readiness_dashboard_preview.png)
 
 
+#### Power BI Companion Dashboard
+
+The pipeline also exports a governed Power BI handoff package. The companion readiness dashboard below is built from those CSV exports and mirrors the same readiness metrics, project context, and decision posture.
+
+![Power BI readiness dashboard preview](docs/assets/readiness_toolkit/powerbi_readiness_dashboard_preview.png)
+
+
 **Readiness KPIs calculated:**
 
 | Metric | Description |
