@@ -2,11 +2,41 @@
 
 [![CI](https://github.com/Mat-Horobjowsky/financial-data-analytics/actions/workflows/ci.yml/badge.svg)](https://github.com/Mat-Horobjowsky/financial-data-analytics/actions/workflows/ci.yml)
 
-A modular analytics engineering portfolio focused on turning raw data into decision-ready intelligence.
+A modular analytics engineering portfolio. The flagship implementation is the **Data Center Transaction Readiness Toolkit** — a complete analytics system that converts a structured client intake workbook into metrics, deterministic recommendations, executive reports, dashboards, Power BI exports, an artifact manifest, and a curated client delivery package.
 
-This repository documents my progression from analyst workflows to reusable analytics systems — combining data ingestion, metric governance, reporting automation, and AI-assisted development workflows.
+---
 
-The core principle:
+## Flagship Project: Data Center Transaction Readiness Toolkit
+
+**Problem it solves:** Data center occupiers, developers, brokers, and investors need to determine whether a requirement or project is ready to transact. That judgment is currently made manually, inconsistently, and without a repeatable analytical foundation.
+
+**What the toolkit does:** It takes a structured client intake workbook, resolves requirement statuses, calculates readiness KPIs, generates a deterministic executive report with category-specific recommendations, renders a self-contained dashboard, exports Power BI-ready files, and assembles a curated client delivery package — all from two CLI commands.
+
+| Stage | Input | Output |
+|---|---|---|
+| Workbook Builder | Multi-sheet client intake `.xlsx` | Flat `PowerBI_Export` sheet + `client_context.csv` |
+| Analytics Pipeline | Excel export sheet + client context | Report, dashboard, Power BI exports, manifest, client package |
+
+**What the toolkit produces:**
+
+- Executive readiness report — `report.html` + `report.pdf` (dark header, KPI cards, Executive Assessment, Recommended Next Steps)
+- Transaction readiness dashboard — `readiness_dashboard.html` + `readiness_dashboard.pdf` (KPI cards, category/market breakdowns, client identity header)
+- Power BI handoff — six flat CSVs ready for a reusable Power BI template
+- `artifact_manifest.json` — classifies every generated file as `client_facing`, `bi_facing`, or `internal`
+- `client_package/` — curated delivery folder with client-friendly file names and a generated cover `README.md`
+
+**Readiness KPIs calculated:**
+
+| Metric | Description |
+|---|---|
+| `readiness_completion_pct` | Percentage of requirements marked complete or closed |
+| `total_requirement_count` | Total requirements in scope |
+| `open_gap_count` | Requirements not yet complete |
+| `critical_item_count` | Requirements marked critical |
+
+**Why this project matters:**
+
+This is not a dashboard layer on top of a data warehouse. It is a complete, cold-start reproducible analytics workflow that starts from a structured Excel intake file and ends with a client delivery package — built on a modular, independently testable engine stack. Clean data, trusted metrics, and visual/report rendering are strictly separated. Each layer has its own CLI, its own tests, and its own clearly scoped role. The result is a system that produces both analyst-facing and client-facing deliverables from a single repeatable workflow.
 
 ```
 Clean data → Trusted metrics → Visuals anywhere
@@ -14,7 +44,7 @@ Clean data → Trusted metrics → Visuals anywhere
 
 ---
 
-## Active Product Stack
+## Engine Stack
 
 | Engine | Version | Input | Output |
 |---|---|---|---|
@@ -65,9 +95,106 @@ The `[pdf]` extras install `xhtml2pdf` so that `report.pdf` and `readiness_dashb
 
 ---
 
-## End-to-End Demo Workflow
+## Flagship Demo: Data Center Transaction Readiness Toolkit
 
-The following commands run the full pipeline on the sample data center dataset.
+This is the canonical portfolio demo. Two commands go from a committed Excel intake template to a full client delivery package.
+
+> **Note:** The source template `examples/readiness_demo/client_intake_template.xlsx` is committed to the repo. Step 1 generates `client_intake_template_demo.xlsx` and `client_context.csv` as local-only outputs (excluded by `.gitignore`).
+
+### Step 1 — Build the export workbook and client context
+
+The `readiness-workbook` CLI resolves each requirement's status from the `Requirement_Map` and `Client_Export` sheets, writes a flat `PowerBI_Export` sheet into a new output workbook, and generates `client_context.csv` alongside it.
+
+```powershell
+readiness-workbook build `
+  --workbook examples/readiness_demo/client_intake_template.xlsx `
+  --output examples/readiness_demo/client_intake_template_demo.xlsx `
+  --client-context-output examples/readiness_demo/client_context.csv `
+  --demo-context
+```
+
+Writes two files (both ignored by `.gitignore` — local only):
+- `client_intake_template_demo.xlsx` — copy of the workbook with `PowerBI_Export` sheet populated
+- `client_context.csv` — project metadata (client name, capacity, markets, timeline, executive summary)
+
+### Step 2 — Run the full analytics pipeline
+
+```powershell
+analytics-pipeline run `
+  --input examples/readiness_demo/client_intake_template_demo.xlsx `
+  --sheet PowerBI_Export `
+  --output outputs/demo_readiness_client `
+  --metrics-config metrics_engine/config/readiness_metrics.yaml `
+  --schema-config metrics_engine/config/readiness_schema.yaml `
+  --template readiness_summary `
+  --pdf `
+  --report-title "Demo AI Infrastructure Co." `
+  --with-visuals `
+  --with-powerbi-export `
+  --client-context examples/readiness_demo/client_context.csv `
+  --client-package
+```
+
+The `--sheet` flag passes the named Excel sheet directly to the Intake Engine. The `--template readiness_summary --pdf` flags produce a polished one-page landscape PDF and a client-facing HTML report. The `--client-context` flag injects client identity into the dashboard header, copies project metadata into the Power BI exports, and populates the `client` block in `pipeline_summary.json` and `artifact_manifest.json`. The `--client-package` flag assembles the curated delivery folder.
+
+**Client delivery package:**
+
+```
+outputs/demo_readiness_client/client_package/
+  README.md                   ← generated delivery cover with client identity and deliverable table
+  package_manifest.json       ← trimmed manifest of client-facing artifacts
+  executive_report.html
+  executive_report.pdf
+  readiness_dashboard.html
+  readiness_dashboard.pdf
+  powerbi/
+    readiness_kpis.csv
+    readiness_by_category.csv
+    readiness_by_market.csv
+    validation_summary.csv
+    metric_dictionary.csv
+    client_context.csv
+```
+
+**Full pipeline output tree:**
+
+```
+outputs/demo_readiness_client/
+  intake/                            ← cleaned readiness data
+  metrics/                           ← readiness KPI tables
+  report/                            ← report.html, report.pdf, report.md
+  store/analytics.duckdb
+  visuals/readiness_dashboard.html
+  visuals/readiness_dashboard.pdf
+  powerbi/                           ← flat CSVs for reusable Power BI template
+  pipeline_summary.json
+  artifact_manifest.json             ← classifies every output as client_facing / bi_facing / internal
+  client_package/                    ← curated delivery folder
+```
+
+### Dashboard output
+
+`readiness_dashboard.html` opens offline in any browser. It renders KPI cards, category breakdowns, and market breakdowns from `analytics.duckdb`. When `--client-context` is provided, the dashboard header displays a client/project identity line (e.g. `Demo AI Infrastructure Co. · Midwest AI Campus Requirement · DEMO-READY-001`). Dashboard title, subtitle, KPI labels, and category display names are configurable in `readiness_dashboard.yaml`. No external dependencies, no server required.
+
+### Quick CSV path
+
+The sample readiness dataset is committed at `metrics_engine/data/sample_readiness.csv`. This command runs immediately after cloning without the workbook builder step:
+
+```powershell
+analytics-pipeline run `
+  --input metrics_engine/data/sample_readiness.csv `
+  --output outputs/demo_readiness `
+  --metrics-config metrics_engine/config/readiness_metrics.yaml `
+  --schema-config metrics_engine/config/readiness_schema.yaml `
+  --with-visuals `
+  --with-powerbi-export
+```
+
+---
+
+## Additional Demo: Generic Data Center KPI Pipeline
+
+The following commands run the full pipeline on the generic data center dataset — useful for exercising the full engine stack on non-readiness KPI data.
 
 ### Sample dataset
 
@@ -141,103 +268,6 @@ analytics-pipeline run \
   --template full_report \
   --with-store
 ```
-
----
-
-## Readiness Pipeline Demo
-
-The Analytics Pipeline supports alternate metric packs via `--metrics-config` and `--schema-config`. The readiness metrics pack is the first working example.
-
-**Strategic wedge:** help data center occupiers, developers, brokers, and investors understand whether a project is ready to transact.
-
-### Readiness metrics
-
-| Metric | Description |
-|---|---|
-| `readiness_completion_pct` | Percentage of requirements marked complete or closed |
-| `total_requirement_count` | Total requirements in scope |
-| `open_gap_count` | Requirements not yet complete |
-| `critical_item_count` | Requirements marked critical |
-
-### Try it now — one command from a committed CSV
-
-The sample readiness dataset is committed at `metrics_engine/data/sample_readiness.csv`. This command runs immediately after cloning:
-
-```powershell
-analytics-pipeline run `
-  --input metrics_engine/data/sample_readiness.csv `
-  --output outputs/demo_readiness `
-  --metrics-config metrics_engine/config/readiness_metrics.yaml `
-  --schema-config metrics_engine/config/readiness_schema.yaml `
-  --with-visuals `
-  --with-powerbi-export
-```
-
-Produces all six pipeline stages, including an HTML dashboard that can be opened offline in any browser:
-
-```
-outputs/demo_readiness/
-  intake/                            ← cleaned readiness data
-  metrics/                           ← readiness KPI tables
-  report/                            ← report against readiness metrics
-  store/analytics.duckdb             ← DuckDB store
-  visuals/readiness_dashboard.html   ← self-contained HTML dashboard
-  visuals/visuals_summary.json
-  powerbi/                           ← flat CSVs for a reusable Power BI template
-    readiness_kpis.csv
-    readiness_by_category.csv
-    readiness_by_market.csv
-    validation_summary.csv
-    metric_dictionary.csv
-  pipeline_summary.json
-  artifact_manifest.json             ← classifies every output as client_facing / bi_facing / internal
-```
-
-### Excel workbook path — for client files
-
-> **Note:** The source template `examples/readiness_demo/client_intake_template.xlsx` is committed to the repo. Step 1 generates `client_intake_template_demo.xlsx` and `client_context.csv` as local-only outputs (excluded by `.gitignore`).
-
-The `readiness-workbook` CLI pre-processes a multi-sheet client intake workbook — it resolves each requirement's status from the `Requirement_Map` and `Client_Export` sheets, writes a flat `PowerBI_Export` sheet into a new output workbook, and generates `client_context.csv` alongside it.
-
-**Step 1 — Generate the export workbook and client context:**
-
-```powershell
-readiness-workbook build `
-  --workbook examples/readiness_demo/client_intake_template.xlsx `
-  --output examples/readiness_demo/client_intake_template_demo.xlsx `
-  --client-context-output examples/readiness_demo/client_context.csv `
-  --demo-context
-```
-
-This writes two files (both ignored by `.gitignore` — local only):
-- `client_intake_template_demo.xlsx` — copy of the workbook with `PowerBI_Export` sheet populated
-- `client_context.csv` — project metadata (client name, capacity, markets, timeline, executive summary)
-
-**Step 2 — Run the full pipeline from the Excel sheet:**
-
-```powershell
-analytics-pipeline run `
-  --input examples/readiness_demo/client_intake_template_demo.xlsx `
-  --sheet PowerBI_Export `
-  --output outputs/demo_readiness_client `
-  --metrics-config metrics_engine/config/readiness_metrics.yaml `
-  --schema-config metrics_engine/config/readiness_schema.yaml `
-  --template readiness_summary `
-  --pdf `
-  --report-title "Demo AI Infrastructure Co." `
-  --with-visuals `
-  --with-powerbi-export `
-  --client-context examples/readiness_demo/client_context.csv `
-  --client-package
-```
-
-The `--sheet` flag passes the named Excel sheet directly to the Intake Engine. The `--template readiness_summary --pdf --report-title` flags generate the polished one-page landscape readiness executive PDF at `outputs/demo_readiness_client/report/report.pdf`; `report.html` renders as a polished client-facing readiness page with a dark header, KPI cards, Executive Assessment, and Recommended Next Steps. The `--client-context` flag injects client name, project name, and project ID as an identity line in the Visuals Engine dashboard header, copies `client_context.csv` into the `powerbi/` output directory, and populates the `client` block in both `pipeline_summary.json` and `artifact_manifest.json`.
-
-After a successful run, `artifact_manifest.json` is written alongside `pipeline_summary.json`. It classifies every generated file as `client_facing`, `bi_facing`, or `internal`, making the deliverable set legible at a glance without parsing the full output tree. The `--client-package` flag consumes this manifest to assemble a curated `client_package/` delivery folder — the artifacts a client or BI team would actually receive, with client-friendly file names and a generated `README.md`.
-
-### Dashboard output
-
-`readiness_dashboard.html` opens offline in any browser. It renders KPI cards, category breakdowns, and market breakdowns from `analytics.duckdb`. When `--client-context` is provided, the dashboard header displays a client/project identity line (e.g. `Demo AI Infrastructure Co. · Midwest AI Campus Requirement · DEMO-READY-001`). Dashboard title, subtitle, KPI labels, and category display names are configurable in `readiness_dashboard.yaml`. The dashboard footer shows source and generation metadata only — no validation warnings. No external dependencies, no server required.
 
 ---
 
@@ -339,9 +369,7 @@ A lightweight reporting engine that converts trusted Metrics Engine outputs into
 
 ### Purpose
 
-The Report Engine is the final layer of the stack.
-
-It takes validated metric outputs and turns them into structured deliverables that support client handoff, portfolio demos, executive summaries, and reporting automation.
+The Report Engine takes validated metric outputs and turns them into structured deliverables that support client handoff, portfolio demos, executive summaries, and reporting automation.
 
 ### Key Features
 
@@ -352,7 +380,7 @@ It takes validated metric outputs and turns them into structured deliverables th
 - Key Insights — deterministic, data-grounded period-over-period bullets
 - Metrics Summary — formatted long-format table with optional period-over-period columns
 - Metric Dictionary — client-friendly column headers
-- `readiness_summary` template — polished client-facing `report.html` (dark header, KPI cards, Executive Assessment, Recommended Next Steps, segment tables; no generic Validation block or Metric Dictionary); full section layout in `report.md`; deterministic category-specific recommendations
+- `readiness_summary` template — polished client-facing `report.html` (dark header, KPI cards, Executive Assessment, Recommended Next Steps, segment tables); deterministic category-specific recommendations
 - Self-contained HTML report with inline CSS
 - Markdown report
 - Optional PDF export via `--pdf` (`report_engine[pdf]` optional dependency)
@@ -552,20 +580,20 @@ A lightweight HTML dashboard generator that reads `analytics.duckdb` and produce
 
 ### Purpose
 
-The Visuals Engine closes the loop from raw data to visual output. It reads the Analytics Store directly and renders KPI cards, category breakdowns, and market breakdowns into a single HTML file — no server, no CDN, no external dependencies.
+The Visuals Engine reads the Analytics Store directly and renders KPI cards, category breakdowns, and market breakdowns into a single HTML file — no server, no CDN, no external dependencies.
 
 ### Key Features
 
 - Reads `analytics.duckdb` via DuckDB Python library
 - YAML dashboard spec — defines sections, metrics, rollup levels, and segment columns
 - Configurable dashboard title and subtitle in YAML spec
-- Client/project identity injection via `--client-context` — renders client name, project name, and project ID in the dashboard header without modifying the YAML spec
+- Client/project identity injection via `--client-context` — renders client name, project name, and project ID in the dashboard header
 - KPI label and description overrides per metric in YAML spec
 - Category display name mapping in YAML spec — human-readable labels without code changes
 - KPI cards — latest value per metric, formatted by unit
 - Category and market breakdowns — CSS progress bars, color-coded by completion percentage
 - Self-contained HTML — inline CSS, no JavaScript, works offline
-- `visuals_summary.json` — machine-readable metadata: metrics rendered, sections rendered, sections skipped, validation status
+- `visuals_summary.json` — metadata: metrics rendered, sections rendered, sections skipped, validation status
 - CLI workflow
 - Test coverage
 
@@ -621,35 +649,15 @@ Active development is focused on `intake_engine/`, `metrics_engine/`, `report_en
 
 ---
 
-## Roadmap
+## Built Milestones
 
-### Completed
-
-- **Intake Engine** — ingest and clean messy CSV / XLSX files; validate, profile, and export clean analytics-ready data; named sheet selection (`--sheet`) for multi-sheet XLSX files
-- **Metrics Engine v1.1** — YAML-driven KPI calculation across configurable rollup levels; prior-period time analysis with `--with-time`
-- **Metrics Engine — Readiness metrics pack** — alternate YAML config for `count`, `conditional_count`, and `completion_pct` metric types; enables project readiness tracking via `--config` / `--schema`
-- **Report Engine v1.2** — client-ready Markdown and HTML reports; KPI Snapshot; deterministic Key Insights; three built-in templates (`full_report`, `executive_summary`, `metrics_detail`); `insights.json`
-- **Analytics Pipeline v0.1** — single-command orchestrator running all three engines in sequence; stops on first failure; writes `pipeline_summary.json`
-- **Analytics Store v0.1** — DuckDB analytics store for Metrics Engine and Report Engine outputs; 6 tables, 3 views; `--report` is optional; standalone CLI
-- **Analytics Pipeline v0.2** — optional `--with-store` flag adds Analytics Store as a fourth stage; `pipeline_summary.json` records all stage results
-- **Visuals Engine v0.1** — YAML-spec-driven HTML dashboard generator; reads `analytics.duckdb` directly; KPI cards, category and market breakdowns; self-contained offline HTML; `visuals_summary.json`
-- **Analytics Pipeline v0.2 (visuals + config flags)** — `--with-visuals` runs Visuals Engine as a fifth stage; `--metrics-config` and `--schema-config` enable any metric pack through the full pipeline; `--with-visuals` implies `--with-store`
-- **End-to-End Pipeline** — full Intake → Metrics → Report → Store → Visuals workflow on both data center KPIs and readiness metrics
-- **Readiness demo prototype** — fictional client intake workbook (`Demo AI Infrastructure Co. / DEMO-READY-001`); `PowerBI_Export` sheet with flat requirement-per-row schema; Intake Engine `--sheet` flag selects the named sheet; two-step Intake → Pipeline workflow validated end-to-end
-- **Visuals Engine — dashboard polish** — configurable `title`, `subtitle`, `kpi_labels`, `kpi_descriptions`, and `category_labels` in YAML spec; client-friendly footer; human-readable KPI and category labels without code changes
-- **Power BI Export stage** — `--with-powerbi-export` flag adds a sixth pipeline stage; exports five flat CSVs (`readiness_kpis`, `readiness_by_category`, `readiness_by_market`, `validation_summary`, `metric_dictionary`) for a reusable Power BI template; `--client-context` flag copies project metadata CSV into the export directory
-- **Readiness workbook builder** (`readiness_workbook/`) — `readiness-workbook build` pre-processes a multi-sheet client intake workbook into a flat `PowerBI_Export` sheet and writes `client_context.csv` alongside it; all demo context values are deterministic and reproducible
-- **Report Engine PDF Export** — `--pdf` flag on `report-engine build` generates `report.pdf` from the rendered HTML; `xhtml2pdf` optional dependency; fails clearly if library is not installed
-- **Report Engine readiness template** — `--template readiness_summary` renders client-facing readiness sections (Readiness Snapshot, Open Gaps, Critical Items, Readiness by Segment, Recommended Next Steps); detects `date_category`/`date_market` rollup rows for segment breakdowns; falls back gracefully on generic data
-- **Report Engine — deterministic readiness recommendations** — Recommended Next Steps section generates category-specific, prioritised recommendations from `readiness_completion_pct`, `open_gap_count`, `critical_item_count`, and segment data; rules include critical-blocker escalation, highest-gap and lowest-completion category callouts, RFP hold threshold (< 60%), and market-ready proceed signal (≥ 80%, zero criticals); logic lives in `insights.py` and is shared by both Markdown and HTML renderers
-- **Power BI export contract documentation and validation tests** — schema contract for all six Power BI CSV files documented in `docs/powerbi_export_contract.md`; 27 contract tests added to `analytics_pipeline/tests/` enforcing required files, required columns, no-duplicate grain keys, all four required KPI metric IDs, and `client_context.csv` copy behaviour
-- **Visuals Engine — client identity injection** — `--client-context` flag on `visuals-engine build` reads `client_name`, `project_name`, and `project_id` from `client_context.csv` and renders a client/project identity line in both HTML and PDF dashboard headers; YAML spec remains generic and reusable; forwarded automatically by `analytics-pipeline run --with-visuals --client-context`
-- **Report Engine — polished readiness HTML** — `--template readiness_summary` now produces a client-facing `report.html` with dark header, KPI cards, Executive Assessment, Recommended Next Steps, and segment tables; generic Validation block and Metric Dictionary removed from HTML output; PDF and Markdown outputs unchanged
-- **Visuals Engine — dashboard footer polish** — readiness dashboard HTML footer displays source and generation metadata only; validation warning counts removed from the client-facing footer
-- **Artifact Manifest v1** — `artifact_manifest.json` emitted on every full-success pipeline run; classifies all 23 generated artifacts as `client_facing`, `bi_facing`, or `internal`; includes client identity block from `--client-context`; source of truth for downstream delivery steps
-- **Client Package v1** — `--client-package` flag on `analytics-pipeline run`; assembles a curated `client_package/` delivery folder from manifest audience classifications; copies client-facing artifacts with client-friendly names (`executive_report.html`, etc.) and BI-facing CSVs to `powerbi/`; generates `README.md` with client identity and deliverable table, and a trimmed `package_manifest.json`; gracefully handles missing artifacts; zero impact on runs without the flag
-
-### Next Priorities
+- **Modular engine stack** — six independently installable Python CLI packages (Intake, Metrics, Report, Analytics Store, Visuals, Analytics Pipeline), each with tests, typed outputs, and a clearly scoped role
+- **Readiness workbook builder** — `readiness-workbook build` pre-processes a multi-sheet client intake workbook into a flat export sheet and writes `client_context.csv`; all demo values are deterministic and reproducible from a cold clone
+- **Readiness metrics pack** — alternate YAML config for `count`, `conditional_count`, and `completion_pct` metric types; enables project readiness tracking through the full pipeline via `--metrics-config` / `--schema-config`
+- **Readiness report + dashboard package** — `readiness_summary` template produces a polished client-facing HTML/PDF report (dark header, KPI cards, Executive Assessment, Recommended Next Steps with deterministic category-specific recommendations) and a self-contained offline dashboard with client identity injection
+- **Power BI export contract** — six flat CSVs exported per run; schema contract documented in `docs/powerbi_export_contract.md` and enforced by 27 contract tests
+- **Artifact manifest + client package** — `artifact_manifest.json` classifies every generated file as `client_facing`, `bi_facing`, or `internal`; `--client-package` assembles a curated delivery folder with client-friendly names and a generated cover README
+- **Cold-start reproducibility + CI** — full demo validated on Python 3.12 from a clean clone; GitHub Actions CI green on all package test suites
 
 ---
 
