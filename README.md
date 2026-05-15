@@ -42,6 +42,10 @@ This is not a dashboard layer on top of a data warehouse. It is a complete, cold
 Clean data → Trusted metrics → Visuals anywhere
 ```
 
+> **Project brief:** For a concise business and system overview, see the  
+> [Data Center Transaction Readiness Toolkit — One-Page Summary](docs/data_center_transaction_readiness_toolkit_one_page_summary.md).
+
+
 ---
 
 ## Engine Stack
