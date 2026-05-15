@@ -25,6 +25,20 @@ A modular analytics engineering portfolio. The flagship implementation is the **
 - `artifact_manifest.json` — classifies every generated file as `client_facing`, `bi_facing`, or `internal`
 - `client_package/` — curated delivery folder with client-friendly file names and a generated cover `README.md`
 
+
+### Sample Outputs
+
+The canonical demo produces polished, client-facing readiness deliverables from the same validated pipeline run.
+
+#### Executive Readiness Report
+
+![Executive Readiness Report preview](docs/assets/readiness_toolkit/executive_readiness_report_preview.png)
+
+#### Transaction Readiness Dashboard
+
+![Transaction Readiness Dashboard preview](docs/assets/readiness_toolkit/transaction_readiness_dashboard_preview.png)
+
+
 **Readiness KPIs calculated:**
 
 | Metric | Description |
